@@ -131,3 +131,35 @@ def sum(a: "tensor.Tensor"):
     out._op = "sum"
     out.is_leaf = False
     return out
+
+
+def max(a: "tensor.Tensor", axis=None, keepdims=False):
+    out = tensor.Tensor(
+        np.max(a.data, axis=axis, keepdims=keepdims),
+        requires_grad=a.requires_grad,
+    )
+
+    def _backward():
+        if a.requires_grad:
+            mask = a.data == out.data
+            a.grad += mask * out.grad
+
+    out._backward = _backward
+    out._prev = [a]
+    out._op = "max"
+    out.is_leaf = False
+    return out
+
+
+def relu(a: "tensor.Tensor"):
+    out = tensor.Tensor(np.maximum(0, a.data), requires_grad=a.requires_grad)
+
+    def _backward():
+        if a.requires_grad:
+            a.grad += (a.data > 0) * out.grad
+
+    out._backward = _backward
+    out._prev = [a]
+    out._op = "relu"
+    out.is_leaf = False
+    return out

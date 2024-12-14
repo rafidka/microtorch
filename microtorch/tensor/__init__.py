@@ -1,5 +1,5 @@
 from .tensor import Tensor
-from .func import add, neg, mul, matmul, sin, cos, exp, sum
+from .functional import add, neg, mul, matmul, sin, cos, exp, sum
 
 __all__ = [
     "Tensor",

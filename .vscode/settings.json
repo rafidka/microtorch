@@ -7,9 +7,12 @@
     "cSpell.words": [
         "backprop",
         "backpropagation",
+        "keepdims",
         "microtorch",
         "ndarray",
         "popleft",
+        "randn",
+        "Softmax",
         "topo",
         "torder"
     ]
