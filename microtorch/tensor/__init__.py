@@ -1,5 +1,5 @@
 from .tensor import Tensor
-from .func import (
+from .functional import (
     add,
     cos,
     exp,

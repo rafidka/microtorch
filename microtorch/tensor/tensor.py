@@ -2,7 +2,7 @@
 import numpy as np
 
 # Local imports
-from . import func, backprop
+from . import backprop, functional as F
 
 
 class Tensor:
@@ -18,16 +18,16 @@ class Tensor:
         self._topo_order = 1
 
     def __add__(self, other):
-        return func.add(self, other)
+        return F.add(self, other)
 
     def __neg__(self):
-        return func.neg(self)
+        return F.neg(self)
 
     def __mul__(self, other):
-        return func.mul(self, other)
+        return F.mul(self, other)
 
     def __matmul__(self, other):
-        return func.matmul(self, other)
+        return F.matmul(self, other)
 
     def backward(self):
         return backprop.backward(self)
