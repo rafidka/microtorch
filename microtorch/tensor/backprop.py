@@ -27,7 +27,7 @@ def _create_torder_map(tensor: "tensor.Tensor") -> dict["tensor.Tensor", int]:
         cursor_torder = torder_map[cursor]
 
         # Update the topological order of the previous tensors
-        for prev in cursor._prev:
+        for prev in cursor._prev:  # type: ignore
             prev_torder = torder_map.get(prev, 1)
             prev_torder = max(prev_torder, cursor_torder + 1)
             torder_map[prev] = prev_torder
@@ -36,7 +36,7 @@ def _create_torder_map(tensor: "tensor.Tensor") -> dict["tensor.Tensor", int]:
     return torder_map
 
 
-def backward(tensor):
+def backward(tensor: "tensor.Tensor") -> None:
     """
     Performs backpropagation on a scalar tensor.
 
@@ -71,5 +71,5 @@ def backward(tensor):
             key=lambda x: x[1],  # Sort by topological order
         ),
     ):
-        if tensor._backward:
-            tensor._backward()
+        if tensor._backward:  # type: ignore
+            tensor._backward()  # type: ignore
