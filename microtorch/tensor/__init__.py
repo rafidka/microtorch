@@ -1,4 +1,3 @@
-from .tensor import Tensor
 from .functional import (
     add,
     cos,
@@ -9,6 +8,7 @@ from .functional import (
     sin,
     sum,
 )
+from .tensor import Tensor
 
 __all__ = [
     "Tensor",

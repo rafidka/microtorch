@@ -7,8 +7,10 @@ import numpy as np
 # Local imports
 from . import tensor
 
+# pyright: reportPrivateUsage=false
 
-def _create_torder_map(tensor: "tensor.Tensor") -> dict["tensor.Tensor", int]:
+
+def _create_torder_map(t: "tensor.Tensor") -> dict["tensor.Tensor", int]:
     """
     Create a topological order map for the computational graph of a given tensor.
 
@@ -19,8 +21,8 @@ def _create_torder_map(tensor: "tensor.Tensor") -> dict["tensor.Tensor", int]:
     dict[Tensor, int]: A dictionary mapping each tensor to its topological order.
 
     """
-    queue = deque([tensor])
-    torder_map: dict["tensor.Tensor", int] = {tensor: 1}
+    queue = deque([t])
+    torder_map: dict[tensor.Tensor, int] = {t: 1}
 
     while queue:
         cursor = queue.popleft()
@@ -56,11 +58,11 @@ def backward(tensor: "tensor.Tensor") -> None:
         tensor in reverse topological order.
     """
     if not tensor.requires_grad:
-        raise Exception("This tensor does not requires_grad enabled.")
-    if tensor.data.size != 1:
+        raise Exception("This tensor does not have requires_grad enabled.")
+    if tensor._data.size != 1:
         raise Exception("Can only do backward on scalar tensors.")
 
-    tensor.grad = np.ones(tensor.data.shape)
+    tensor.grad = np.ones(tensor._data.shape)
 
     torder_map = _create_torder_map(tensor)
 
