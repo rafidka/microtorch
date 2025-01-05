@@ -8,9 +8,8 @@ class ReLU(Module[Tensor]):
 
     inplace: bool
 
-    def __init__(self, inplace: bool = False):
+    def __init__(self):
         super().__init__()
-        self.inplace = inplace
 
     def forward(self, input: Tensor) -> Tensor:
         return F.relu(input)
@@ -24,6 +23,6 @@ class Softmax(Module[Tensor]):
         self.dim = dim
 
     def forward(self, x: Tensor) -> Tensor:
-        exps = F.exp(x - F.max(x, axis=1, keepdims=True))
-        s = F.sum(exps, axis=1, keepdims=True)
+        exps = F.exp(x - F.max(x, axis=self.dim, keepdims=True))
+        s = F.sum(exps, axis=self.dim, keepdims=True)
         return exps / s

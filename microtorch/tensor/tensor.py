@@ -64,10 +64,10 @@ class Tensor:
         self._move(F.add(self, other))
 
     def __sub__(self, other: "Tensor"):
-        return F.add(self, other)
+        return F.sub(self, other)
 
     def __isub__(self, other: "Tensor"):
-        self._move(F.add(self, other))
+        self._move(F.sub(self, other))
 
     def __neg__(self):
         return F.neg(self)
