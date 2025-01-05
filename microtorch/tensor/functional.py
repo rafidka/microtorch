@@ -23,17 +23,50 @@ def add(a: "tensor.Tensor", b: "tensor.Tensor"):
 
     def _backward():
         if a.requires_grad:
-            assert a.grad
-            assert out.grad
+            assert a.grad is not None
+            assert out.grad is not None
             a.grad += out.grad
         if b.requires_grad:
-            assert b.grad
-            assert out.grad
+            assert b.grad is not None
+            assert out.grad is not None
             b.grad += out.grad
 
     out._backward = _backward
     out._prev = [a, b]
     out._op = "add"
+    out._is_leaf = False
+    return out
+
+
+def sub(a: "tensor.Tensor", b: "tensor.Tensor"):
+    """
+    Subtracts two tensors element-wise.
+
+    Args:
+        a (tensor.Tensor): The first tensor.
+        b (tensor.Tensor): The second tensor.
+
+    Returns:
+        tensor.Tensor: The result of subtracting the second tensor from the first tensor.
+    """
+    out = tensor.Tensor(
+        a._data - b._data,
+        requires_grad=a.requires_grad or b.requires_grad,
+    )
+
+    def _backward():
+        if a.requires_grad:
+            assert a.grad is not None
+            assert out.grad is not None
+            a.grad += out.grad
+        if b.requires_grad:
+            assert b.grad is not None
+            assert out.grad is not None
+            b.grad -= out.grad
+
+    out._backward = _backward
+    out._prev = [a, b]
+    out._op = "sub"
     out._is_leaf = False
     return out
 
@@ -55,8 +88,8 @@ def neg(a: "tensor.Tensor"):
 
     def _backward():
         if a.requires_grad:
-            assert a.grad
-            assert out.grad
+            assert a.grad is not None
+            assert out.grad is not None
             a.grad -= out.grad
 
     out._backward = _backward
@@ -84,10 +117,10 @@ def mul(a: "tensor.Tensor", b: "tensor.Tensor"):
 
     def _backward():
         if a.requires_grad:
-            assert a.grad
+            assert a.grad is not None
             a.grad += b._data * out.grad
         if b.requires_grad:
-            assert b.grad
+            assert b.grad is not None
             b.grad += a._data * out.grad
 
     out._backward = _backward
@@ -115,10 +148,10 @@ def matmul(a: "tensor.Tensor", b: "tensor.Tensor"):
 
     def _backward():
         if a.requires_grad:
-            assert out.grad
+            assert out.grad is not None
             a.grad += np.matmul(out.grad, b._data.T)
         if b.requires_grad:
-            assert out.grad
+            assert out.grad is not None
             b.grad += np.matmul(a._data.T, out.grad)
 
     out._backward = _backward
@@ -146,14 +179,14 @@ def div(a: "tensor.Tensor", b: "tensor.Tensor"):
 
     def _backward():
         if a.requires_grad:
-            assert a.grad
-            assert b.grad
-            assert out.grad
+            assert a.grad is not None
+            assert b.grad is not None
+            assert out.grad is not None
             a.grad += (1 / b._data) * out.grad
         if b.requires_grad:
-            assert a.grad
-            assert b.grad
-            assert out.grad
+            assert a.grad is not None
+            assert b.grad is not None
+            assert out.grad is not None
             b.grad += -a._data / (b._data**2) * out.grad
 
     out._backward = _backward
@@ -177,8 +210,8 @@ def sin(a: "tensor.Tensor"):
 
     def _backward():
         if a.requires_grad:
-            assert a.grad
-            assert out.grad
+            assert a.grad is not None
+            assert out.grad is not None
             a.grad += np.cos(a._data) * out.grad
 
     out._backward = _backward
@@ -202,8 +235,8 @@ def cos(a: "tensor.Tensor"):
 
     def _backward():
         if a.requires_grad:
-            assert a.grad
-            assert out.grad
+            assert a.grad is not None
+            assert out.grad is not None
             a.grad += -np.sin(a._data) * out.grad
 
     out._backward = _backward
@@ -227,8 +260,8 @@ def exp(a: "tensor.Tensor"):
 
     def _backward():
         if a.requires_grad:
-            assert a.grad
-            assert out.grad
+            assert a.grad is not None
+            assert out.grad is not None
             a.grad += np.exp(a._data) * out.grad
 
     out._backward = _backward
@@ -263,8 +296,8 @@ def sum(
 
     def _backward():
         if a.requires_grad:
-            assert a.grad
-            assert out.grad
+            assert a.grad is not None
+            assert out.grad is not None
             a.grad += out.grad
 
     out._backward = _backward
@@ -274,7 +307,11 @@ def sum(
     return out
 
 
-def max(a: "tensor.Tensor", axis: int | tuple[int], keepdims: bool = False):
+def max(
+    a: "tensor.Tensor",
+    axis: int | tuple[int] | None = None,
+    keepdims: bool = False,
+):
     """
     Computes the maximum of elements along the specified axis.
 
@@ -318,8 +355,8 @@ def relu(a: "tensor.Tensor"):
 
     def _backward():
         if a.requires_grad:
-            assert a.grad
-            assert out.grad
+            assert a.grad is not None
+            assert out.grad is not None
             a.grad += (a._data > 0) * out.grad
 
     out._backward = _backward
