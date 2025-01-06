@@ -13,6 +13,7 @@ dev = [
     "ipykernel>=6.29.5",
     "pyright>=1.1.390",
     "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
     "ruff>=0.8.3",
 ]
 
@@ -22,7 +23,37 @@ typeCheckingMode = "strict"
 venv = ".venv"
 venvPath = "."
 
+[tool.coverage.run]
+branch = true
+source = ["microtorch"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "pass",
+]
+ignore_errors = true
+omit = [
+    "tests/*",
+    "setup.py",
+]
+
+[tool.coverage.html]
+directory = "coverage_html"
+
 [tool.pytest.ini_options]
+addopts = """
+    --cov=microtorch
+    --cov-report=term-missing
+    --cov-report=html
+    --cov-report=xml
+    --cov-branch
+    """
 pythonpath = ["./"]
 testpaths = "tests"
 xfail_strict = true
