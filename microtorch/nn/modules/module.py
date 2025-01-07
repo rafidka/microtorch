@@ -10,7 +10,7 @@ class Module[T]:
     """
 
     def __init__(self):
-        self._modules: dict[str, Module[T]] = {}
+        self._modules: dict[str, Module[Any]] = {}
 
     def add_module(self, name: str, module: "Module[T]"):
         self._modules[name] = module

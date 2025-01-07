@@ -186,3 +186,54 @@ def test_relu():
     # Check the gradients
     assert a.grad is not None
     assert np.array_equal(a.grad, np.array([0, 1, 1, 0]))
+
+
+def test_reshape():
+    a = tensor.Tensor(np.array([[1, 2], [3, 4]]), requires_grad=True)
+    result = F.reshape(a, (1, 4))
+
+    F.sum(result).backward()
+
+    # Check the result
+    assert np.array_equal(result._data, np.array([[1, 2, 3, 4]]))
+
+    # Check the gradients
+    assert a.grad is not None
+    assert np.array_equal(a.grad, np.array([[1, 1], [1, 1]]))
+
+
+def test_reshape_backward_chain():
+    a = tensor.Tensor(np.array([[1, 2], [3, 4]]), requires_grad=True)
+    result = F.reshape(a, (1, 4))
+    result2 = F.reshape(result, (2, 2))
+
+    F.sum(result2).backward()
+
+    # Check the gradients
+    assert a.grad is not None
+    assert np.array_equal(a.grad, np.array([[1, 1], [1, 1]]))
+
+
+def test_reshape_exp_chain():
+    a = tensor.Tensor(np.array([[1, 2], [3, 4]]), requires_grad=True)
+    result = F.reshape(a, (1, 4))
+    result2 = F.exp(result)
+
+    F.sum(result2).backward()
+
+    # Check the gradients
+    assert a.grad is not None
+    assert np.array_equal(a.grad, np.exp(a._data))
+
+
+def test_reshape_sine_cosine_chain():
+    a = tensor.Tensor(np.array([[1, 2], [3, 4]]), requires_grad=True)
+    result = F.reshape(a, (1, 4))
+    result2 = F.sin(result)
+    result3 = F.cos(result2)
+
+    F.sum(result3).backward()
+
+    # Check the gradients
+    assert a.grad is not None
+    assert np.allclose(a.grad, -np.sin(np.sin(a._data)) * np.cos(a._data))
