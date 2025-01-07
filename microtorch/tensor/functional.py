@@ -25,11 +25,27 @@ def add(a: "tensor.Tensor", b: "tensor.Tensor"):
         if a.requires_grad:
             assert a.grad is not None
             assert out.grad is not None
-            a.grad += out.grad
+            # See if broadcasting was done.
+            if a._data.shape != out.grad.shape:
+                # Sum along the axes that was broadcasted.
+                a.grad += np.sum(
+                    out.grad,
+                    axis=tuple(range(out.grad.ndim - a._data.ndim)),
+                )
+            else:
+                a.grad += out.grad
         if b.requires_grad:
             assert b.grad is not None
             assert out.grad is not None
-            b.grad += out.grad
+            # See if broadcasting was done.
+            if b._data.shape != out.grad.shape:
+                # Sum along the axes that was broadcasted.
+                b.grad += np.sum(
+                    out.grad,
+                    axis=tuple(range(out.grad.ndim - b._data.ndim)),
+                )
+            else:
+                b.grad += out.grad
 
     out._backward = _backward
     out._prev = [a, b]
@@ -362,5 +378,34 @@ def relu(a: "tensor.Tensor"):
     out._backward = _backward
     out._prev = [a]
     out._op = "relu"
+    out._is_leaf = False
+    return out
+
+
+def reshape(a: "tensor.Tensor", shape: tuple[int, ...]):
+    """
+    Reshapes the tensor to the specified shape.
+
+    Args:
+        a (tensor.Tensor): The input tensor.
+        shape (tuple[int]): The new shape.
+
+    Returns:
+        tensor.Tensor: The reshaped tensor.
+    """
+    out = tensor.Tensor(
+        a._data.reshape(shape),
+        requires_grad=a.requires_grad,
+    )
+
+    def _backward():
+        if a.requires_grad:
+            assert a.grad is not None
+            assert out.grad is not None
+            a.grad += out.grad.reshape(a._data.shape)
+
+    out._backward = _backward
+    out._prev = [a]
+    out._op = "reshape"
     out._is_leaf = False
     return out

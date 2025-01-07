@@ -40,7 +40,7 @@ class Tensor:
         self._prev: list[Tensor] = []
         self._topo_order = 1
 
-    def _move(self, other: "Tensor") -> None:
+    def _move(self, other: "Tensor"):
         self._data = other._data
         self.requires_grad = other.requires_grad
         self.grad = other.grad
@@ -62,12 +62,14 @@ class Tensor:
 
     def __iadd__(self, other: "Tensor"):
         self._move(F.add(self, other))
+        return self
 
     def __sub__(self, other: "Tensor"):
         return F.sub(self, other)
 
     def __isub__(self, other: "Tensor"):
         self._move(F.sub(self, other))
+        return self
 
     def __neg__(self):
         return F.neg(self)
@@ -77,6 +79,7 @@ class Tensor:
 
     def __imul__(self, other: "Tensor"):
         self._move(F.mul(self, other))
+        return self
 
     def __matmul__(self, other: "Tensor"):
         return F.matmul(self, other)
@@ -86,6 +89,10 @@ class Tensor:
 
     def __itruediv__(self, other: "Tensor"):
         self._move(F.div(self, other))
+        return self
+
+    def reshape(self, shape: tuple[int, ...]) -> "Tensor":
+        return F.reshape(self, shape)
 
     def backward(self):
         return backprop.backward(self)
