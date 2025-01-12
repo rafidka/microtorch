@@ -1,8 +1,42 @@
+from typing import Any
+
 import numpy as np
 
 from . import tensor
 
 # pyright: reportPrivateUsage=false
+
+
+def _accumulate_broadcasted_gradients(
+    grad: np.ndarray[Any, Any], shape: tuple[int, ...]
+):
+    """
+    Accumulates the gradients along the axes that were broadcasted.
+
+    This is required during the backward phase of operations that result in broadcasting
+    of tensors. In such cases, the gradients need to be summed along the axes that were
+    broadcasted.
+
+    Args:
+        grad (np.ndarray): The gradients to accumulate.
+        shape (tuple[int]): The shape of the tensor to accumulate the gradients for.
+
+    Returns:
+        np.ndarray: The accumulated gradients.
+    """
+    # Calculate the ndim of the gradient, excluding the axes at the beginning of the
+    # shape that are equal to 1.
+    shape_ndim = len(shape)
+    for s in shape:
+        if s != 1:
+            break
+        shape_ndim -= 1
+
+    # Calculate the number of axes that were broadcasted.
+    num_broadcasted_axes = len(grad.shape) - shape_ndim
+
+    # Sum along the axes that were broadcasted.
+    return np.sum(grad, axis=tuple(range(num_broadcasted_axes)))
 
 
 def add(a: "tensor.Tensor", b: "tensor.Tensor"):
@@ -25,27 +59,11 @@ def add(a: "tensor.Tensor", b: "tensor.Tensor"):
         if a.requires_grad:
             assert a.grad is not None
             assert out.grad is not None
-            # See if broadcasting was done.
-            if a._data.shape != out.grad.shape:
-                # Sum along the axes that was broadcasted.
-                a.grad += np.sum(
-                    out.grad,
-                    axis=tuple(range(out.grad.ndim - a._data.ndim)),
-                )
-            else:
-                a.grad += out.grad
+            a.grad += _accumulate_broadcasted_gradients(out.grad, a.grad.shape)
         if b.requires_grad:
             assert b.grad is not None
             assert out.grad is not None
-            # See if broadcasting was done.
-            if b._data.shape != out.grad.shape:
-                # Sum along the axes that was broadcasted.
-                b.grad += np.sum(
-                    out.grad,
-                    axis=tuple(range(out.grad.ndim - b._data.ndim)),
-                )
-            else:
-                b.grad += out.grad
+            b.grad += _accumulate_broadcasted_gradients(out.grad, b.grad.shape)
 
     out._backward = _backward
     out._prev = [a, b]
@@ -74,11 +92,11 @@ def sub(a: "tensor.Tensor", b: "tensor.Tensor"):
         if a.requires_grad:
             assert a.grad is not None
             assert out.grad is not None
-            a.grad += out.grad
+            a.grad += _accumulate_broadcasted_gradients(out.grad, a.grad.shape)
         if b.requires_grad:
             assert b.grad is not None
             assert out.grad is not None
-            b.grad -= out.grad
+            b.grad -= _accumulate_broadcasted_gradients(out.grad, b.grad.shape)
 
     out._backward = _backward
     out._prev = [a, b]
@@ -134,10 +152,14 @@ def mul(a: "tensor.Tensor", b: "tensor.Tensor"):
     def _backward():
         if a.requires_grad:
             assert a.grad is not None
-            a.grad += b._data * out.grad
+            a.grad += _accumulate_broadcasted_gradients(
+                b._data * out.grad, a.grad.shape
+            )
         if b.requires_grad:
             assert b.grad is not None
-            b.grad += a._data * out.grad
+            b.grad += _accumulate_broadcasted_gradients(
+                a._data * out.grad, b.grad.shape
+            )
 
     out._backward = _backward
     out._prev = [a, b]
@@ -196,14 +218,16 @@ def div(a: "tensor.Tensor", b: "tensor.Tensor"):
     def _backward():
         if a.requires_grad:
             assert a.grad is not None
-            assert b.grad is not None
             assert out.grad is not None
-            a.grad += (1 / b._data) * out.grad
+            a.grad += _accumulate_broadcasted_gradients(
+                (1 / b._data) * out.grad, a.grad.shape
+            )
         if b.requires_grad:
-            assert a.grad is not None
             assert b.grad is not None
             assert out.grad is not None
-            b.grad += -a._data / (b._data**2) * out.grad
+            b.grad += _accumulate_broadcasted_gradients(
+                -a._data / (b._data**2) * out.grad, b.grad.shape
+            )
 
     out._backward = _backward
     out._prev = [a, b]
