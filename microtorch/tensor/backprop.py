@@ -46,8 +46,8 @@ def backward(tensor: "tensor.Tensor") -> None:
         tensor (Tensor): The tensor to perform backpropagation on.
 
     Raises:
-        Exception: If the tensor does not have requires_grad enabled.
-        Exception: If the tensor is not a scalar tensor.
+        ValueError: If the tensor does not have requires_grad enabled.
+        ValueError: If the tensor is not a scalar tensor.
 
     Notes:
         - This function assigns a topological order to each tensor in the computation
@@ -58,9 +58,9 @@ def backward(tensor: "tensor.Tensor") -> None:
         tensor in reverse topological order.
     """
     if not tensor.requires_grad:
-        raise Exception("This tensor does not have requires_grad enabled.")
+        raise ValueError("This tensor does not have requires_grad enabled.")
     if tensor._data.size != 1:
-        raise Exception("Can only do backward on scalar tensors.")
+        raise ValueError("Can only do backward on scalar tensors.")
 
     tensor.grad = np.ones(tensor._data.shape)
 
