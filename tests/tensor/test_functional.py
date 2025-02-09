@@ -1,8 +1,11 @@
 import numpy as np
+import pytest
 
 from microtorch.tensor import functional as F, tensor
 
 # pyright: reportPrivateUsage=false
+
+DEFAULT_ATOL = 1e-10
 
 
 def test_add_with_grads():
@@ -655,3 +658,151 @@ def test_reshape_sine_cosine_chain():
     # Check the gradients
     assert a.grad is not None
     assert np.allclose(a.grad, -np.sin(np.sin(a._data)) * np.cos(a._data))
+
+
+def test_cross_entropy_basic_forward_single():
+    """
+    Test the forward pass of cross_entropy with a simple example.
+    """
+    logits = tensor.Tensor(
+        np.array(
+            [
+                [2.0, 1.0, 0.1],
+            ]
+        ),
+        requires_grad=True,
+    )
+    target = tensor.Tensor(
+        np.array(
+            [
+                0,
+            ]
+        ),
+        requires_grad=False,
+    )
+
+    loss = F.cross_entropy(logits, target)
+
+    # Confirm the type, shape and size of the loss.
+    assert (
+        isinstance(loss._data, np.ndarray)
+        and loss._data.shape == ()
+        and loss._data.size == 1
+    ), "Cross-entropy should return a numpy array with a single float element."
+
+    # Confirm the value of the loss. The value was calculated manually using PyTorch.
+    expected_loss = 0.417029947042465
+    assert np.isclose(loss._data.item(), expected_loss, atol=DEFAULT_ATOL)
+
+
+def test_cross_entropy_basic_forward_batch():
+    """
+    Test the forward pass of cross_entropy with a simple example.
+    """
+    logits = tensor.Tensor(
+        np.array(
+            [
+                [2.0, 1.0, 0.1],
+                [0.5, 2.5, 1.0],
+                [10.0, -2.5, -50.123],
+            ]
+        ),
+        requires_grad=True,
+    )
+    target = tensor.Tensor(
+        np.array(
+            [
+                0,
+                2,
+                1,
+            ]
+        ),
+        requires_grad=False,
+    )
+
+    loss = F.cross_entropy(logits, target)
+
+    # Confirm the type, shape and size of the loss.
+    assert (
+        isinstance(loss._data, np.ndarray)
+        and loss._data.shape == ()
+        and loss._data.size == 1
+    ), "Cross-entropy should return a numpy array with a single float element."
+
+    # Confirm the value of the loss. The value was calculated manually using PyTorch.
+    expected_loss = 4.907796382904053
+    assert np.isclose(loss._data.item(), expected_loss, atol=1e-10)
+
+
+def test_cross_entropy_backward():
+    """
+    Test the backward pass (gradient computation) of cross_entropy.
+    We'll compare the computed gradients to a numerical approximation.
+    """
+    logits = tensor.Tensor(
+        np.array(
+            [
+                [2.0, 1.0, 0.1],
+                [0.5, 2.5, 1.0],
+                [10.0, -2.5, -50.123],
+            ]
+        ),
+        requires_grad=True,
+    )
+    target = tensor.Tensor(
+        np.array(
+            [
+                0,
+                2,
+                1,
+            ]
+        ),
+        requires_grad=False,
+    )
+
+    loss = F.cross_entropy(logits, target)
+
+    loss.backward()
+    assert logits.grad is not None
+    expected_grad = np.array(
+        [
+            [-1.136662811040878e-01, 8.081099390983582e-02, 3.285530209541321e-02],
+            [3.320788592100143e-02, 2.453749179840088e-01, -2.785828113555908e-01],
+            [3.333321213722229e-01, -3.333320915699005e-01, 2.581008822323310e-27],
+        ]
+    )
+    assert np.all(np.isclose(logits.grad, expected_grad, atol=DEFAULT_ATOL))
+
+    # Assert the target does not have a gradient
+    assert target.grad is None
+
+
+def test_cross_entropy_no_grad():
+    """
+    Test cross_entropy when the input logits do not require gradients.
+    """
+
+    # Create tensors, but logits do not require grad
+    logits = tensor.Tensor(
+        np.array(
+            [
+                [2.0, 1.0, 0.1],
+                [0.5, 2.5, 1.0],
+            ]
+        ),
+        requires_grad=False,
+    )
+    target = tensor.Tensor(
+        np.array(
+            [
+                0,
+                2,
+            ]
+        ),
+        requires_grad=False,
+    )
+
+    loss = F.cross_entropy(logits, target)
+
+    with pytest.raises(ValueError):
+        loss.backward()

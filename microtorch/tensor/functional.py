@@ -2,7 +2,7 @@ from typing import Any
 
 import numpy as np
 
-from . import tensor
+from microtorch import tensor
 
 # pyright: reportPrivateUsage=false
 
@@ -432,4 +432,77 @@ def reshape(a: "tensor.Tensor", shape: tuple[int, ...]):
     out._prev = [a]
     out._op = "reshape"
     out._is_leaf = False
+    return out
+
+
+def cross_entropy(logits: "tensor.Tensor", target: "tensor.Tensor") -> "tensor.Tensor":
+    """
+    Computes the cross-entropy loss between the logits and the target.
+
+    This function assumes:
+      - logits is of shape (N, C), where N is the batch size and
+        C is the number of classes.
+      - target is of shape (N,) containing the class indices for each example
+        in the range [0, C-1].
+
+    Args:
+        logits (Tensor): The input tensor containing unnormalized log probabilities.
+        target (Tensor): The tensor containing the true class indices.
+
+    Returns:
+        Tensor: A scalar tensor containing the average cross-entropy loss over the batch.
+    """
+    # Check for shape mismatch.
+    if logits.shape[0] != target.shape[0]:
+        raise ValueError(
+            f"Expected logits and target to have the same batch size, but got "
+            f"{logits.shape[0]} and {target.shape[0]}."
+        )
+
+    # Convert logits data to NumPy arrays for computation
+    logits_data = logits._data
+    target_data = target._data.astype(int)
+
+    # Number of samples in the batch
+    N: int = logits_data.shape[0]
+
+    # Compute softmax probabilities
+    exps: np.ndarray[Any, Any] = np.exp(
+        logits_data - np.max(logits_data, axis=1, keepdims=True)  # more stable
+    )
+    probs: np.ndarray[Any, Any] = exps / np.sum(exps, axis=1, keepdims=True)
+
+    # Compute cross-entropy loss
+    # clamp probabilities to avoid log(0)
+    eps = 1e-15
+    probs_clamped = np.clip(probs, eps, 1 - eps)
+    correct_log_probs: np.ndarray[Any, Any] = -np.log(
+        probs_clamped[np.arange(N), target_data]
+    )
+    loss_value = np.mean(correct_log_probs)
+
+    # Create the output tensor
+    out = tensor.Tensor(np.array(loss_value), requires_grad=logits.requires_grad)
+
+    # Define backward pass
+    def _backward():
+        assert logits.requires_grad
+
+        # Gradient wrt logits
+        grad_logits = probs.copy()
+        grad_logits[np.arange(N), target_data] -= 1.0
+        grad_logits /= N  # average loss
+
+        # Chain rule: multiply by gradient from the next node (out.grad)
+        # Note that out is a scalar, so out.grad should be 1 by default,
+        # but we multiply explicitly to follow the microtorch style
+        assert logits.grad is not None
+        assert out.grad is not None
+        logits.grad += grad_logits * out.grad
+
+    out._backward = _backward
+    out._prev = [logits, target]
+    out._op = "cross_entropy_loss"
+    out._is_leaf = False
+
     return out
