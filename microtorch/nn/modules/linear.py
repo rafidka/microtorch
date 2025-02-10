@@ -1,5 +1,6 @@
 import numpy as np
 
+from microtorch.nn.modules.parameter import Parameter
 from microtorch.tensor import Tensor
 
 from .module import Module
@@ -16,11 +17,11 @@ class Linear(Module[Tensor]):
 
     def __init__(self, in_features: int, out_features: int):
         super().__init__()
-        self.weight = Tensor(
+        self.weight = Parameter(
             np.random.randn(in_features, out_features),
             requires_grad=True,
         )
-        self.bias = Tensor(
+        self.bias = Parameter(
             np.zeros(out_features),
             requires_grad=True,
         )
