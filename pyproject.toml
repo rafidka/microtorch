@@ -1,27 +1,28 @@
 [project]
 name = "microtorch"
 version = "0.1.0"
-description = "Add your description here"
+description = "microtorch is a deep learning framework for educational purposes. It is heavily inspired by PyTorch and closely follows its style. People can benefict from it to have an in-depth understanding of deep learning."
 readme = "README.md"
+authors = [
+    { name = "Rafid", email = "rafidka@gmail.com" }
+]
 requires-python = ">=3.10"
 dependencies = [
-    "numpy>=2.2.0",
+    "numpy>=2.2.3",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
     "ipykernel>=6.29.5",
-    "pyright>=1.1.390",
-    "pytest>=8.3.4",
+    "pyright>=1.1.396",
+    "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
-    "ruff>=0.8.3",
+    "ruff>=0.9.9",
 ]
-
-[tool.pyright]
-reportMissingImports = false
-typeCheckingMode = "strict"
-venv = ".venv"
-venvPath = "."
 
 [tool.coverage.run]
 branch = true
@@ -47,6 +48,12 @@ omit = [
 [tool.coverage.html]
 directory = "coverage_html"
 
+[tool.pyright]
+reportMissingImports = false
+typeCheckingMode = "strict"
+venv = ".venv"
+venvPath = "."
+
 [tool.pytest.ini_options]
 addopts = """
     --cov=microtorch
@@ -55,7 +62,7 @@ addopts = """
     --cov-report=xml
     --cov-branch
     """
-pythonpath = ["./"]
+pythonpath = ["./src"]
 testpaths = "tests"
 xfail_strict = true
 

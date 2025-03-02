@@ -1,4 +1,4 @@
-from microtorch.nn import Module
+from microtorch.nn.modules.module import Module
 from microtorch.tensor import Tensor, functional as F
 
 

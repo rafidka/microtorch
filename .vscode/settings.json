@@ -29,8 +29,4 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
-    "window.title": "🔥 microtorch 🔥",
-    "workbench.colorCustomizations": {
-        "titleBar.activeBackground": "#115511",
-    },
 }
