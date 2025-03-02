@@ -4,4 +4,9 @@ version = "0.1.0"
 description = "Example neural networks written with MicroTorch"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "microtorch",
+]
+
+[tool.uv.sources]
+microtorch = { path = "../", editable = true }
