@@ -3,10 +3,20 @@ name = "microtorch-examples"
 version = "0.1.0"
 description = "Example neural networks written with MicroTorch"
 readme = "README.md"
+authors = [
+    { name = "Rafid", email = "rafidka@gmail.com" }
+]
 requires-python = ">=3.12"
 dependencies = [
     "microtorch",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [tool.uv.sources]
 microtorch = { path = "../", editable = true }
+
+[project.scripts]
+mnist = "microtorch_examples.mnist:main"
