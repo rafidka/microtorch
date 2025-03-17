@@ -50,12 +50,25 @@ class Tensor:
         self._prev = other._prev
         self._topo_order = other._is_leaf
 
+    def clone(self) -> "Tensor":
+        # TODO This function should be differentiable just like pytorch's.
+        return Tensor(self._data.copy(), self.requires_grad)
+
     def numpy(self) -> np.ndarray[Any, Any]:
-        return self._data
+        # Return a copy of the data rather than the data itself (to avoid modifying the
+        # original data)
+        return self._data.copy()
 
     @property
-    def shape(self) -> tuple[int]:
+    def shape(self) -> tuple[int, ...]:
         return self._data.shape
+
+    @property
+    def ndim(self) -> int:
+        return self._data.ndim
+
+    def __len__(self) -> int:
+        return len(self._data)
 
     def __add__(self, other: "Tensor"):
         return F.add(self, other)
@@ -91,11 +104,17 @@ class Tensor:
         self._move(F.div(self, other))
         return self
 
-    def reshape(self, shape: tuple[int, ...]) -> "Tensor":
-        return F.reshape(self, shape)
+    def reshape(self, *shape: int | tuple[int, ...]) -> "Tensor":
+        if len(shape) == 1 and isinstance(shape[0], tuple):
+            shape = shape[0]
+            return F.reshape(self, shape)
+        elif len(shape) > 1 and all(isinstance(s, int) for s in shape):
+            return F.reshape(self, shape)  # type: ignore
+        else:
+            raise ValueError("Invalid shape.")
 
     def backward(self):
         return backprop.backward(self)
 
     def __repr__(self):
-        return f"Tensor(data={self._data}, requires_grad={self.requires_grad}, grad={self.grad})"
+        return f"Tensor(data={self._data}, shape={self.shape}, requires_grad={self.requires_grad}, grad={self.grad})"

@@ -109,5 +109,7 @@ def test_tensor_shape():
 
 def test_tensor_repr():
     tensor = Tensor([1, 2, 3], requires_grad=True)
-    expected_repr = "Tensor(data=[1 2 3], requires_grad=True, grad=[0. 0. 0.])"
+    expected_repr = (
+        "Tensor(data=[1 2 3], shape=(3,), requires_grad=True, grad=[0. 0. 0.])"
+    )
     assert repr(tensor) == expected_repr
