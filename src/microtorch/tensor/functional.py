@@ -506,3 +506,54 @@ def cross_entropy(logits: "tensor.Tensor", target: "tensor.Tensor") -> "tensor.T
     out._is_leaf = False
 
     return out
+
+
+def stack(tensors: list["tensor.Tensor"], axis: int = 0):
+    """
+    Stacks a list of tensors along the specified axis.
+
+    Args:
+        tensors (list[Tensor]): The list of input tensors.
+        axis (int, optional): The axis along which to stack the tensors. Default is 0.
+
+    Returns:
+        Tensor: The stacked tensor.
+    """
+    if not tensors:
+        raise ValueError("Expected non-empty list of tensors")
+
+    # Check that all tensors have the same shape
+    first_shape = tensors[0]._data.shape
+    for i, t in enumerate(tensors[1:], 1):
+        if t._data.shape != first_shape:
+            raise ValueError(
+                f"All tensors must have the same shape. "
+                f"tensor at index 0 has shape {first_shape}, "
+                f"tensor at index {i} has shape {t._data.shape}"
+            )
+
+    out = tensor.Tensor(
+        np.stack([t._data for t in tensors], axis=axis),
+        requires_grad=np.any([t.requires_grad for t in tensors]),
+    )
+
+    def _backward():
+        if not out.requires_grad:
+            return
+
+        assert out.grad is not None
+
+        # Split the gradient along the stacked dimension and add to inputs
+        grad_slices = np.split(out.grad, len(tensors), axis=axis)
+
+        for i, t in enumerate(tensors):
+            if t.requires_grad:
+                assert t.grad is not None
+                # Remove the stacked dimension to match original tensor shape
+                t.grad += np.squeeze(grad_slices[i], axis=axis)
+
+    out._backward = _backward
+    out._prev = tensors
+    out._op = "stack"
+    out._is_leaf = False
+    return out

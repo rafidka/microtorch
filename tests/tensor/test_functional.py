@@ -806,3 +806,186 @@ def test_cross_entropy_no_grad():
 
     with pytest.raises(ValueError):
         loss.backward()
+
+
+def test_stack_basic():
+    """Test basic stacking functionality along default axis."""
+    a = tensor.Tensor([1, 2], requires_grad=True)
+    b = tensor.Tensor([3, 4], requires_grad=True)
+
+    result = F.stack([a, b])
+
+    # Check the result
+    assert result._data.shape == (2, 2)
+    assert np.array_equal(result._data, np.array([[1, 2], [3, 4]]))
+    assert result.requires_grad
+
+
+def test_stack_axis_1():
+    """Test stacking along axis 1."""
+    a = tensor.Tensor([1, 2], requires_grad=True)
+    b = tensor.Tensor([3, 4], requires_grad=True)
+
+    result = F.stack([a, b], axis=1)
+
+    # Check the result
+    assert result._data.shape == (2, 2)
+    assert np.array_equal(result._data, np.array([[1, 3], [2, 4]]))
+    assert result.requires_grad
+
+
+def test_stack_backward():
+    """Test gradient calculation for stack operation."""
+    a = tensor.Tensor([1, 2], requires_grad=True)
+    b = tensor.Tensor([3, 4], requires_grad=True)
+
+    result = F.stack([a, b])
+
+    F.sum(result).backward()
+
+    # Check the gradients
+    assert a.grad is not None
+    assert b.grad is not None
+    assert np.array_equal(a.grad, np.array([1, 1]))
+    assert np.array_equal(b.grad, np.array([1, 1]))
+
+
+def test_stack_backward_axis_1():
+    """Test gradient calculation when stacking along axis 1."""
+    a = tensor.Tensor([1, 2], requires_grad=True)
+    b = tensor.Tensor([3, 4], requires_grad=True)
+
+    result = F.stack([a, b], axis=1)
+
+    F.sum(result).backward()
+
+    # Check the gradients
+    assert a.grad is not None
+    assert b.grad is not None
+    assert np.array_equal(a.grad, np.array([1, 1]))
+    assert np.array_equal(b.grad, np.array([1, 1]))
+
+
+def test_stack_mixed_requires_grad():
+    """Test stacking tensors where only some require gradients."""
+    a = tensor.Tensor([1, 2], requires_grad=True)
+    b = tensor.Tensor([3, 4], requires_grad=False)
+
+    result = F.stack([a, b])
+
+    # Result should require gradients since at least one input requires them
+    assert result.requires_grad
+
+    F.sum(result).backward()
+
+    # Check the gradients
+    assert a.grad is not None
+    assert np.array_equal(a.grad, np.array([1, 1]))
+    # b shouldn't have a gradient
+    assert b.grad is None
+
+
+def test_stack_backward_chain():
+    """Test gradient flow when stack is part of a chain."""
+    a = tensor.Tensor([1, 2], requires_grad=True)
+    b = tensor.Tensor([3, 4], requires_grad=True)
+
+    result1 = F.stack([a, b])
+    # Stack the stacked tensor with another tensor
+    c = tensor.Tensor([[5, 6], [7, 8]], requires_grad=True)
+    result2 = F.stack([result1, c], axis=0)
+
+    F.sum(result2).backward()
+
+    # Check the gradients
+    assert a.grad is not None
+    assert b.grad is not None
+    assert c.grad is not None
+    assert np.array_equal(a.grad, np.array([1, 1]))
+    assert np.array_equal(b.grad, np.array([1, 1]))
+    assert np.array_equal(c.grad, np.array([[1, 1], [1, 1]]))
+
+
+def test_stack_exp_chain():
+    """Test gradient flow when stack is followed by exp."""
+    a = tensor.Tensor([1, 2], requires_grad=True)
+    b = tensor.Tensor([3, 4], requires_grad=True)
+
+    result1 = F.stack([a, b])
+    result2 = F.exp(result1)
+
+    F.sum(result2).backward()
+
+    # Check the gradients - should be exp(value)
+    assert a.grad is not None
+    assert b.grad is not None
+    assert np.array_equal(a.grad, np.exp(a._data))
+    assert np.array_equal(b.grad, np.exp(b._data))
+
+
+def test_stack_sine_cosine_chain():
+    """Test gradient flow when stack is part of a sin/cos chain."""
+    a = tensor.Tensor([1, 2], requires_grad=True)
+    b = tensor.Tensor([3, 4], requires_grad=True)
+
+    result1 = F.stack([a, b])
+    result2 = F.sin(result1)
+    result3 = F.cos(result2)
+
+    F.sum(result3).backward()
+
+    # Check the gradients
+    assert a.grad is not None
+    assert b.grad is not None
+
+    # Expected gradients: -sin(sin(value)) * cos(value)
+    expected_grad_a = -np.sin(np.sin(a._data)) * np.cos(a._data)
+    expected_grad_b = -np.sin(np.sin(b._data)) * np.cos(b._data)
+
+    assert np.allclose(a.grad, expected_grad_a)
+    assert np.allclose(b.grad, expected_grad_b)
+
+
+def test_stack_multiple_tensors():
+    """Test stacking more than two tensors."""
+    a = tensor.Tensor(np.array([1, 2]), requires_grad=True)
+    b = tensor.Tensor(np.array([3, 4]), requires_grad=True)
+    c = tensor.Tensor(np.array([5, 6]), requires_grad=True)
+
+    result = F.stack([a, b, c])
+
+    # Check the result
+    assert result._data.shape == (3, 2)
+    assert np.array_equal(result._data, np.array([[1, 2], [3, 4], [5, 6]]))
+
+    F.sum(result).backward()
+
+    # Check the gradients
+    assert a.grad is not None
+    assert b.grad is not None
+    assert c.grad is not None
+    assert np.array_equal(a.grad, np.array([1, 1]))
+    assert np.array_equal(b.grad, np.array([1, 1]))
+    assert np.array_equal(c.grad, np.array([1, 1]))
+
+
+def test_stack_multidimensional_tensors():
+    """Test stacking tensors with multiple dimensions."""
+    a = tensor.Tensor(np.array([[1, 2], [3, 4]]), requires_grad=True)
+    b = tensor.Tensor(np.array([[5, 6], [7, 8]]), requires_grad=True)
+
+    # Stack along the first axis (creating a 3D tensor)
+    result = F.stack([a, b], axis=0)
+
+    # Check the result
+    assert result._data.shape == (2, 2, 2)
+    assert np.array_equal(result._data[0], a._data)
+    assert np.array_equal(result._data[1], b._data)
+
+    F.sum(result).backward()
+
+    # Check the gradients
+    assert a.grad is not None
+    assert b.grad is not None
+    assert np.array_equal(a.grad, np.ones_like(a._data))
+    assert np.array_equal(b.grad, np.ones_like(b._data))
