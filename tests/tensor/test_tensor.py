@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from microtorch.tensor.tensor import Tensor
 
@@ -31,6 +32,25 @@ def test_tensor_move():
     assert tensor1.grad is not None
     assert tensor2.grad is not None
     assert np.array_equal(tensor1.grad, tensor2.grad)
+
+
+def test_tensor_clone_with_grad():
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+    clone = tensor.clone()
+    assert np.array_equal(tensor.numpy(), clone.numpy())
+    assert tensor.requires_grad == clone.requires_grad
+    assert tensor.grad is not None
+    assert clone.grad is not None
+    assert np.array_equal(tensor.grad, clone.grad)
+
+
+def test_tensor_clone_without_grad():
+    tensor = Tensor([1, 2, 3], requires_grad=False)
+    clone = tensor.clone()
+    assert np.array_equal(tensor.numpy(), clone.numpy())
+    assert tensor.requires_grad == clone.requires_grad
+    assert tensor.grad is None
+    assert clone.grad is None
 
 
 def test_tensor_add():
@@ -105,6 +125,33 @@ def test_tensor_matmul():
 def test_tensor_shape():
     tensor = Tensor([[1, 2, 3], [4, 5, 6]])
     assert tensor.shape == (2, 3)
+
+
+def test_tensor_ndim():
+    tensor = Tensor([[1, 2, 3], [4, 5, 6]])
+    assert tensor.ndim == 2
+
+
+def test_tensor_len():
+    # 1D tensor
+    tensor = Tensor([1, 2, 3])
+    assert len(tensor) == 3
+
+    # 2D tensor
+    tensor = Tensor([[1, 2, 3], [4, 5, 6]])
+    assert len(tensor) == 2
+
+
+def test_tensor_reshape_with_tuple():
+    tensor = Tensor([1, 2, 3, 4, 5, 6])
+    reshaped_tensor = tensor.reshape((2, 3))
+    assert np.array_equal(reshaped_tensor.numpy(), np.array([[1, 2, 3], [4, 5, 6]]))
+
+
+def test_tensor_reshape_with_args():
+    tensor = Tensor([1, 2, 3, 4, 5, 6])
+    reshaped_tensor = tensor.reshape(2, 3)
+    assert np.array_equal(reshaped_tensor.numpy(), np.array([[1, 2, 3], [4, 5, 6]]))
 
 
 def test_tensor_repr():

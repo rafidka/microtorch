@@ -834,6 +834,21 @@ def test_stack_axis_1():
     assert result.requires_grad
 
 
+def test_stack_empty_list():
+    """Test stacking an empty list."""
+    with pytest.raises(ValueError):
+        F.stack([])
+
+
+def test_stack_incompatible_shapes():
+    """Test stacking tensors with incompatible shapes."""
+    a = tensor.Tensor([1, 2])
+    b = tensor.Tensor([3, 4, 5])
+
+    with pytest.raises(ValueError):
+        F.stack([a, b])
+
+
 def test_stack_backward():
     """Test gradient calculation for stack operation."""
     a = tensor.Tensor([1, 2], requires_grad=True)
@@ -882,6 +897,24 @@ def test_stack_mixed_requires_grad():
     assert a.grad is not None
     assert np.array_equal(a.grad, np.array([1, 1]))
     # b shouldn't have a gradient
+    assert b.grad is None
+
+
+def test_stack_no_requires_grad():
+    """Test stacking tensors where none require gradients."""
+    a = tensor.Tensor([1, 2])
+    b = tensor.Tensor([3, 4])
+
+    result = F.stack([a, b])
+
+    # Result should not require gradients since none of the inputs require them
+    assert not result.requires_grad
+    dummy = tensor.Tensor(np.zeros_like(result._data), requires_grad=True)
+
+    F.sum(result + dummy).backward()
+
+    # Check the gradients
+    assert a.grad is None
     assert b.grad is None
 
 
