@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Rafid", email = "rafidka@gmail.com" }
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.2.3",
 ]
@@ -68,7 +68,7 @@ xfail_strict = true
 
 [tool.ruff]
 line-length = 88
-target-version = "py310"
+target-version = "py312"
 include = [
     "microtorch/**/*.py",
     "tests/**/*.py",
