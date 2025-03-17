@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 
 from microtorch.nn.modules.parameter import Parameter
 
@@ -8,7 +9,7 @@ class Optimizer(ABC):
     Base class for all optimizers.
     """
 
-    def __init__(self, parameters: list[Parameter], lr: float):
+    def __init__(self, parameters: Iterable[Parameter], lr: float):
         """
         Base class for all optimizers.
 

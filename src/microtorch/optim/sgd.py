@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from microtorch.nn.modules.parameter import Parameter
 from microtorch.optim.optimizer import Optimizer
 
@@ -11,7 +13,7 @@ class SGD(Optimizer):
 
     def __init__(
         self,
-        parameters: list[Parameter],
+        parameters: Iterable[Parameter],
         lr: float = 0.01,
     ):
         """
