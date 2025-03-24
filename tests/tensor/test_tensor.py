@@ -160,3 +160,12 @@ def test_tensor_repr():
         "Tensor(data=[1 2 3], shape=(3,), requires_grad=True, grad=[0. 0. 0.])"
     )
     assert repr(tensor) == expected_repr
+
+
+def test_tensor_item():
+    tensor = Tensor([1])
+    assert tensor.item() == 1
+
+    tensor = Tensor([1, 2, 3])
+    with pytest.raises(ValueError):
+        tensor.item()
