@@ -108,13 +108,18 @@ class Tensor:
         if len(shape) == 1 and isinstance(shape[0], tuple):
             shape = shape[0]
             return F.reshape(self, shape)
-        elif len(shape) > 1 and all(isinstance(s, int) for s in shape):
-            return F.reshape(self, shape)  # type: ignore
         else:
-            raise ValueError("Invalid shape.")
+            return F.reshape(self, shape)  # type: ignore
 
     def backward(self):
         return backprop.backward(self)
+
+    def item(self):
+        if self._data.size != 1:
+            raise ValueError(
+                "only one element tensors can be converted to Python scalars"
+            )
+        return self._data.item()
 
     def __repr__(self):
         return f"Tensor(data={self._data}, shape={self.shape}, requires_grad={self.requires_grad}, grad={self.grad})"
