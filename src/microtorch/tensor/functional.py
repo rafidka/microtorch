@@ -3,12 +3,13 @@ from typing import Any
 import numpy as np
 
 from microtorch import tensor
+from microtorch.tensor.utils import identify_broadcasting_dimensions
 
 # pyright: reportPrivateUsage=false
 
 
 def _accumulate_broadcasted_gradients(
-    grad: np.ndarray[Any, Any], shape: tuple[int, ...]
+    grad: np.ndarray[Any, Any], broadcast_dims: tuple[int, ...]
 ):
     """
     Accumulates the gradients along the axes that were broadcasted.
@@ -19,24 +20,13 @@ def _accumulate_broadcasted_gradients(
 
     Args:
         grad (np.ndarray): The gradients to accumulate.
-        shape (tuple[int]): The shape of the tensor to accumulate the gradients for.
+        broadcast_dims (tuple[int]): The dimensions along which broadcasting occurred.
 
     Returns:
         np.ndarray: The accumulated gradients.
     """
-    # Calculate the ndim of the gradient, excluding the axes at the beginning of the
-    # shape that are equal to 1.
-    shape_ndim = len(shape)
-    for s in shape:
-        if s != 1:
-            break
-        shape_ndim -= 1
-
-    # Calculate the number of axes that were broadcasted.
-    num_broadcasted_axes = len(grad.shape) - shape_ndim
-
     # Sum along the axes that were broadcasted.
-    return np.sum(grad, axis=tuple(range(num_broadcasted_axes)))
+    return np.sum(grad, axis=broadcast_dims, keepdims=True)
 
 
 def add(a: "tensor.Tensor", b: "tensor.Tensor"):
@@ -56,14 +46,19 @@ def add(a: "tensor.Tensor", b: "tensor.Tensor"):
     )
 
     def _backward():
+        a_broadcast, b_broadcast = identify_broadcasting_dimensions(
+            a._data.shape, b._data.shape
+        )
         if a.requires_grad:
             assert a.grad is not None
             assert out.grad is not None
-            a.grad += _accumulate_broadcasted_gradients(out.grad, a.grad.shape)
+            delta_grad = _accumulate_broadcasted_gradients(out.grad, a_broadcast)
+            a.grad += delta_grad.reshape(a.grad.shape)
         if b.requires_grad:
             assert b.grad is not None
             assert out.grad is not None
-            b.grad += _accumulate_broadcasted_gradients(out.grad, b.grad.shape)
+            delta_grad = _accumulate_broadcasted_gradients(out.grad, b_broadcast)
+            b.grad += delta_grad.reshape(b.grad.shape)
 
     out._backward = _backward
     out._prev = [a, b]
@@ -89,14 +84,19 @@ def sub(a: "tensor.Tensor", b: "tensor.Tensor"):
     )
 
     def _backward():
+        a_broadcast, b_broadcast = identify_broadcasting_dimensions(
+            a._data.shape, b._data.shape
+        )
         if a.requires_grad:
             assert a.grad is not None
             assert out.grad is not None
-            a.grad += _accumulate_broadcasted_gradients(out.grad, a.grad.shape)
+            delta_grad = _accumulate_broadcasted_gradients(out.grad, a_broadcast)
+            a.grad += delta_grad.reshape(a.grad.shape)
         if b.requires_grad:
             assert b.grad is not None
             assert out.grad is not None
-            b.grad -= _accumulate_broadcasted_gradients(out.grad, b.grad.shape)
+            delta_grad = _accumulate_broadcasted_gradients(out.grad, b_broadcast)
+            b.grad -= delta_grad.reshape(b.grad.shape)
 
     out._backward = _backward
     out._prev = [a, b]
@@ -150,16 +150,21 @@ def mul(a: "tensor.Tensor", b: "tensor.Tensor"):
     )
 
     def _backward():
+        a_broadcast, b_broadcast = identify_broadcasting_dimensions(
+            a._data.shape, b._data.shape
+        )
         if a.requires_grad:
             assert a.grad is not None
-            a.grad += _accumulate_broadcasted_gradients(
-                b._data * out.grad, a.grad.shape
+            delta_grad = _accumulate_broadcasted_gradients(
+                b._data * out.grad, a_broadcast
             )
+            a.grad += delta_grad.reshape(a.grad.shape)
         if b.requires_grad:
             assert b.grad is not None
-            b.grad += _accumulate_broadcasted_gradients(
-                a._data * out.grad, b.grad.shape
+            delta_grad = _accumulate_broadcasted_gradients(
+                a._data * out.grad, b_broadcast
             )
+            b.grad += delta_grad.reshape(b.grad.shape)
 
     out._backward = _backward
     out._prev = [a, b]
@@ -216,18 +221,23 @@ def div(a: "tensor.Tensor", b: "tensor.Tensor"):
     )
 
     def _backward():
+        a_broadcast, b_broadcast = identify_broadcasting_dimensions(
+            a._data.shape, b._data.shape
+        )
         if a.requires_grad:
             assert a.grad is not None
             assert out.grad is not None
-            a.grad += _accumulate_broadcasted_gradients(
-                (1 / b._data) * out.grad, a.grad.shape
+            delta_grad = _accumulate_broadcasted_gradients(
+                (1 / b._data) * out.grad, a_broadcast
             )
+            a.grad += delta_grad.reshape(a.grad.shape)
         if b.requires_grad:
             assert b.grad is not None
             assert out.grad is not None
-            b.grad += _accumulate_broadcasted_gradients(
-                -a._data / (b._data**2) * out.grad, b.grad.shape
+            delta_grad = _accumulate_broadcasted_gradients(
+                -a._data / (b._data**2) * out.grad, b_broadcast
             )
+            b.grad += delta_grad.reshape(b.grad.shape)
 
     out._backward = _backward
     out._prev = [a, b]
