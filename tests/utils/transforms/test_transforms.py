@@ -60,6 +60,48 @@ class TestToTensor:
         )
 
 
+class TestToTensorPIL:
+    """Tests for ToTensor with PIL images (if PIL is available)."""
+
+    @pytest.fixture
+    def pil_available(self):
+        """Check if PIL is available."""
+        try:
+            from PIL import Image
+
+            return Image
+        except ImportError:
+            pytest.skip("PIL not available")
+
+    def test_pil_grayscale_image(self, pil_available):
+        """Test converting a PIL grayscale image to tensor."""
+        Image = pil_available
+        transform = ToTensor()
+        # Create a grayscale PIL image
+        img = Image.new("L", (5, 4), color=128)
+        result = transform(img)
+
+        assert isinstance(result, Tensor)
+        assert result.shape == (1, 4, 5)  # (C, H, W)
+        # Check normalization: 128/255 ~ 0.502
+        assert np.allclose(result.numpy(), 128 / 255, atol=0.01)
+
+    def test_pil_rgb_image(self, pil_available):
+        """Test converting a PIL RGB image to tensor."""
+        Image = pil_available
+        transform = ToTensor()
+        # Create an RGB PIL image
+        img = Image.new("RGB", (5, 4), color=(255, 128, 0))
+        result = transform(img)
+
+        assert isinstance(result, Tensor)
+        assert result.shape == (3, 4, 5)  # (C, H, W)
+        # Check normalization: R=1.0, G~0.502, B=0.0
+        np.testing.assert_array_almost_equal(result.numpy()[0], 1.0, decimal=2)
+        np.testing.assert_array_almost_equal(result.numpy()[1], 128 / 255, decimal=2)
+        np.testing.assert_array_almost_equal(result.numpy()[2], 0.0, decimal=2)
+
+
 class TestNormalize:
     """Tests for the Normalize transform."""
 
@@ -130,6 +172,19 @@ class TestNormalize:
         transform = Normalize(mean=mean, std=std)
 
         with pytest.raises(ValueError, match="Expected tensor to be 3D"):
+            transform(tensor)
+
+    def test_normalize_4d_wrong_channels(self):
+        """Test that normalize raises error for mismatched channels in 4D tensor."""
+        data = np.ones((2, 3, 4, 4), dtype=np.float32)  # 4D tensor with 3 channels
+        tensor = Tensor(data)
+
+        # Mean/std have 2 elements but tensor has 3 channels
+        mean = [0.5, 0.5]
+        std = [0.5, 0.5]
+        transform = Normalize(mean=mean, std=std)
+
+        with pytest.raises(ValueError, match="Expected mean and std"):
             transform(tensor)
 
     def test_normalize_not_inplace(self):

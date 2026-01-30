@@ -193,14 +193,26 @@ def matmul(a: "tensor.Tensor", b: "tensor.Tensor"):
         if a.requires_grad:
             assert a.grad is not None
             assert out.grad is not None
-            # Use swapaxes for proper transpose of last two dimensions
-            # This handles both 2D and batched (3D+) tensors correctly
-            a.grad += np.matmul(out.grad, np.swapaxes(b._data, -1, -2))
+            # Handle 1D vector case: b is a vector, so we use outer product
+            if b._data.ndim == 1:
+                # For A @ v where v is 1D: dL/dA = dL/dout outer v
+                # out.grad has shape (batch..., m), b._data has shape (n,)
+                # We need a.grad shape (batch..., m, n)
+                a.grad += np.outer(out.grad, b._data).reshape(a.grad.shape)
+            else:
+                # Use swapaxes for proper transpose of last two dimensions
+                # This handles both 2D and batched (3D+) tensors correctly
+                a.grad += np.matmul(out.grad, np.swapaxes(b._data, -1, -2))
         if b.requires_grad:
             assert b.grad is not None
             assert out.grad is not None
-            # Use swapaxes for proper transpose of last two dimensions
-            b.grad += np.matmul(np.swapaxes(a._data, -1, -2), out.grad)
+            # Handle 1D vector case for a
+            if a._data.ndim == 1:
+                # For v @ B where v is 1D: dL/dB = v outer dL/dout
+                b.grad += np.outer(a._data, out.grad).reshape(b.grad.shape)
+            else:
+                # Use swapaxes for proper transpose of last two dimensions
+                b.grad += np.matmul(np.swapaxes(a._data, -1, -2), out.grad)
 
     out._backward = _backward
     out._prev = [a, b]
