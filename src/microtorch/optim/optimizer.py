@@ -17,7 +17,8 @@ class Optimizer(ABC):
             parameters (list): List of tensors to optimize.
             lr (float): Learning rate.
         """
-        self.parameters = parameters
+        # Convert to list to avoid iterator exhaustion on multiple iterations
+        self.parameters: list[Parameter] = list(parameters)
         self.lr = lr
 
     @abstractmethod

@@ -1,10 +1,13 @@
 import random
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any
 
 from microtorch.tensor import Tensor, functional as F
 
 from .dataset import Dataset
+
+# Type alias for collate functions
+CollateFn = Callable[[list[Any]], Any]
 
 
 def default_collate_fn(batch: list[tuple[Any, ...]]) -> tuple[list[Any] | Tensor, ...]:
@@ -51,21 +54,21 @@ def default_collate_fn(batch: list[tuple[Any, ...]]) -> tuple[list[Any] | Tensor
     >>> # result[0] is a stacked tensor, result[1] is ["a", "b"]
     """
     # First, ensure the types of all elements in the batch are the same
-    first_row_types = [type(elem) for elem in batch[0]]
+    first_row_types: list[type[Any]] = [type(elem) for elem in batch[0]]
     for row in batch:
         if [type(elem) for elem in row] != first_row_types:
             raise ValueError("All elements in the batch should have the same type")
 
-    batches = [list() for _ in range(len(batch[0]))]
+    batches: list[Any] = [list() for _ in range(len(batch[0]))]
 
     for row in batch:
         for i, elem in enumerate(row):
             batches[i].append(elem)
 
     # Execute `stack` on batches of tensors.
-    for i, batch in enumerate(batches):
-        if isinstance(batch[0], Tensor):
-            batches[i] = F.stack(batch)
+    for i, b in enumerate(batches):
+        if isinstance(b[0], Tensor):
+            batches[i] = F.stack(b)
 
     return tuple(batches)
 
@@ -87,7 +90,7 @@ class DataLoader[T]:
         dataset: Dataset[T],
         batch_size: int = 1,
         shuffle: bool = False,
-        collate_fn=default_collate_fn,
+        collate_fn: CollateFn = default_collate_fn,
     ) -> None:
         """Initialize the DataLoader.
 
@@ -107,7 +110,7 @@ class DataLoader[T]:
                 f"batch_size should be a positive integer, got {batch_size}"
             )
 
-    def __iter__(self) -> Iterator[list[T]]:
+    def __iter__(self) -> Iterator[Any]:
         """Create an iterator over the batches in the dataset.
 
         Returns:

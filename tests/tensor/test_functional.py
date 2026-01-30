@@ -551,6 +551,55 @@ def test_sum_without_grads():
     assert a.grad is None
 
 
+def test_sum_with_axis():
+    """Test sum with axis parameter."""
+    a = tensor.Tensor(np.array([[1, 2], [3, 4]]), requires_grad=True)
+    result = F.sum(a, axis=0)
+
+    F.sum(result).backward()
+
+    # Check the result
+    assert np.array_equal(result._data, np.array([4, 6]))
+
+    # Check the gradients
+    assert a.grad is not None
+    assert np.array_equal(a.grad, np.ones_like(a._data))
+
+
+def test_sum_with_tuple_axis():
+    """Test sum with tuple axis parameter."""
+    a = tensor.Tensor(
+        np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]]), requires_grad=True
+    )
+    result = F.sum(a, axis=(0, 2))
+
+    F.sum(result).backward()
+
+    # Check the result shape
+    assert result._data.shape == (2,)
+    assert np.array_equal(result._data, np.array([14, 22]))
+
+    # Check the gradients
+    assert a.grad is not None
+    assert np.array_equal(a.grad, np.ones_like(a._data))
+
+
+def test_sum_with_keepdims():
+    """Test sum with keepdims parameter."""
+    a = tensor.Tensor(np.array([[1, 2], [3, 4]]), requires_grad=True)
+    result = F.sum(a, axis=0, keepdims=True)
+
+    F.sum(result).backward()
+
+    # Check the result
+    assert result._data.shape == (1, 2)
+    assert np.array_equal(result._data, np.array([[4, 6]]))
+
+    # Check the gradients
+    assert a.grad is not None
+    assert np.array_equal(a.grad, np.ones_like(a._data))
+
+
 def test_max_with_grads():
     a = tensor.Tensor(np.array([1, 2, 3, 4]), requires_grad=True)
     result = F.max(a)
@@ -578,6 +627,56 @@ def test_max_without_grads():
 
     # Check the gradients
     assert a.grad is None
+
+
+def test_max_with_axis():
+    """Test max with axis parameter."""
+    a = tensor.Tensor(np.array([[1, 5], [3, 2]]), requires_grad=True)
+    result = F.max(a, axis=0)
+
+    F.sum(result).backward()
+
+    # Check the result
+    assert np.array_equal(result._data, np.array([3, 5]))
+
+    # Check the gradients - gradient flows to max element
+    assert a.grad is not None
+    expected_grad = np.array([[0, 1], [1, 0]])
+    assert np.array_equal(a.grad, expected_grad)
+
+
+def test_max_with_tuple_axis():
+    """Test max with tuple axis parameter."""
+    a = tensor.Tensor(
+        np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]]), requires_grad=True
+    )
+    result = F.max(a, axis=(0, 2))
+
+    F.sum(result).backward()
+
+    # Check the result shape
+    assert result._data.shape == (2,)
+    assert np.array_equal(result._data, np.array([6, 8]))
+
+    # Check the gradients
+    assert a.grad is not None
+
+
+def test_max_with_keepdims():
+    """Test max with keepdims parameter."""
+    a = tensor.Tensor(np.array([[1, 5], [3, 2]]), requires_grad=True)
+    result = F.max(a, axis=0, keepdims=True)
+
+    F.sum(result).backward()
+
+    # Check the result
+    assert result._data.shape == (1, 2)
+    assert np.array_equal(result._data, np.array([[3, 5]]))
+
+    # Check the gradients
+    assert a.grad is not None
+    expected_grad = np.array([[0, 1], [1, 0]])
+    assert np.array_equal(a.grad, expected_grad)
 
 
 def test_relu_with_grads():

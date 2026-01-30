@@ -3,13 +3,21 @@
 This module provides image transformations similar to torchvision.transforms.
 """
 
-from typing import Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
 
 import numpy as np
-from PIL.Image import Image
 
 # Import your Tensor class
 from microtorch.tensor import Tensor
+
+# PIL is optional - only needed for PIL Image support
+if TYPE_CHECKING:
+    from PIL.Image import Image
+else:
+    try:
+        from PIL.Image import Image
+    except ImportError:
+        Image = None  # type: ignore[misc, assignment]
 
 # Define generic type variables for input and output
 T_in = TypeVar("T_in")
@@ -43,7 +51,7 @@ class Transform(Generic[T_in, T_out]):
         raise NotImplementedError("Subclasses must implement __call__")
 
 
-class ToTensor(Transform[np.ndarray[Any, Any] | Image, Tensor]):
+class ToTensor(Transform[Any, Tensor]):
     """Convert a numpy.ndarray or PIL Image to a microtorch.Tensor.
 
     Converts a PIL Image or numpy.ndarray (H x W x C) in the range [0, 255] to
@@ -53,11 +61,11 @@ class ToTensor(Transform[np.ndarray[Any, Any] | Image, Tensor]):
     channel.
     """
 
-    def __call__(self, pic: np.ndarray[Any, Any] | Image) -> Tensor:
+    def __call__(self, pic: Any) -> Tensor:
         """Convert a PIL Image or numpy.ndarray to tensor.
 
         Args:
-            pic: Image to be converted to tensor.
+            pic: Image to be converted to tensor. Can be a numpy.ndarray or PIL Image.
 
         Returns:
             Tensor: Converted image.
@@ -69,8 +77,10 @@ class ToTensor(Transform[np.ndarray[Any, Any] | Image, Tensor]):
             >>> transform = ToTensor()
             >>> tensor_img = transform(img)
         """
-        # Handle PIL Image
-        if isinstance(pic, Image):
+        np_img: np.ndarray[Any, Any]
+
+        # Handle PIL Image (check if Image class is available and pic is an instance)
+        if Image is not None and isinstance(pic, Image):
             if pic.mode == "L":
                 # Single-channel grayscale
                 np_img = np.array(pic, dtype=np.float32)
@@ -78,7 +88,7 @@ class ToTensor(Transform[np.ndarray[Any, Any] | Image, Tensor]):
             else:
                 # Multi-channel (e.g., RGB)
                 np_img = np.array(pic, dtype=np.float32).transpose((2, 0, 1))
-        else:
+        elif isinstance(pic, np.ndarray):
             # Handle numpy array
             if pic.ndim == 2:
                 # Single-channel grayscale
@@ -86,6 +96,10 @@ class ToTensor(Transform[np.ndarray[Any, Any] | Image, Tensor]):
             else:
                 # Assume HWC format, convert to CHW
                 np_img = pic.transpose((2, 0, 1))
+        else:
+            raise TypeError(
+                f"Expected numpy.ndarray or PIL Image, got {type(pic).__name__}"
+            )
 
         # Convert from [0, 255] to [0, 1]
         if np_img.max() > 1.0:

@@ -169,3 +169,47 @@ def test_tensor_item():
     tensor = Tensor([1, 2, 3])
     with pytest.raises(ValueError):
         tensor.item()
+
+
+def test_tensor_radd():
+    """Test reverse add (scalar + tensor)."""
+    tensor = Tensor([1, 2, 3])
+    result = 5 + tensor
+    assert np.array_equal(result.numpy(), np.array([6, 7, 8]))
+
+    # Test with float
+    result = 1.5 + tensor
+    assert np.array_equal(result.numpy(), np.array([2.5, 3.5, 4.5]))
+
+
+def test_tensor_rsub():
+    """Test reverse subtract (scalar - tensor)."""
+    tensor = Tensor([1, 2, 3])
+    result = 10 - tensor
+    assert np.array_equal(result.numpy(), np.array([9, 8, 7]))
+
+    # Test with float
+    result = 5.5 - tensor
+    assert np.array_equal(result.numpy(), np.array([4.5, 3.5, 2.5]))
+
+
+def test_tensor_rmul():
+    """Test reverse multiply (scalar * tensor)."""
+    tensor = Tensor([1, 2, 3])
+    result = 3 * tensor
+    assert np.array_equal(result.numpy(), np.array([3, 6, 9]))
+
+    # Test with float
+    result = 0.5 * tensor
+    assert np.array_equal(result.numpy(), np.array([0.5, 1.0, 1.5]))
+
+
+def test_tensor_rtruediv():
+    """Test reverse divide (scalar / tensor)."""
+    tensor = Tensor([1, 2, 4])
+    result = 8 / tensor
+    assert np.array_equal(result.numpy(), np.array([8, 4, 2]))
+
+    # Test with float
+    result = 1.0 / tensor
+    assert np.array_equal(result.numpy(), np.array([1.0, 0.5, 0.25]))

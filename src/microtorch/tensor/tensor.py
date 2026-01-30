@@ -48,7 +48,7 @@ class Tensor:
         self._is_leaf = other._is_leaf
         self._op = other._op
         self._prev = other._prev
-        self._topo_order = other._is_leaf
+        self._topo_order = other._topo_order
 
     def clone(self) -> "Tensor":
         # TODO This function should be differentiable just like pytorch's.
@@ -73,12 +73,22 @@ class Tensor:
     def __add__(self, other: "Tensor"):
         return F.add(self, other)
 
+    def __radd__(self, other: "Tensor | int | float"):
+        if not isinstance(other, Tensor):
+            other = Tensor(np.array(other))
+        return F.add(other, self)
+
     def __iadd__(self, other: "Tensor"):
         self._move(F.add(self, other))
         return self
 
     def __sub__(self, other: "Tensor"):
         return F.sub(self, other)
+
+    def __rsub__(self, other: "Tensor | int | float"):
+        if not isinstance(other, Tensor):
+            other = Tensor(np.array(other))
+        return F.sub(other, self)
 
     def __isub__(self, other: "Tensor"):
         self._move(F.sub(self, other))
@@ -90,6 +100,11 @@ class Tensor:
     def __mul__(self, other: "Tensor"):
         return F.mul(self, other)
 
+    def __rmul__(self, other: "Tensor | int | float"):
+        if not isinstance(other, Tensor):
+            other = Tensor(np.array(other))
+        return F.mul(other, self)
+
     def __imul__(self, other: "Tensor"):
         self._move(F.mul(self, other))
         return self
@@ -99,6 +114,11 @@ class Tensor:
 
     def __truediv__(self, other: "Tensor"):
         return F.div(self, other)
+
+    def __rtruediv__(self, other: "Tensor | int | float"):
+        if not isinstance(other, Tensor):
+            other = Tensor(np.array(other))
+        return F.div(other, self)
 
     def __itruediv__(self, other: "Tensor"):
         self._move(F.div(self, other))

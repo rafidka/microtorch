@@ -191,11 +191,16 @@ def matmul(a: "tensor.Tensor", b: "tensor.Tensor"):
 
     def _backward():
         if a.requires_grad:
+            assert a.grad is not None
             assert out.grad is not None
-            a.grad += np.matmul(out.grad, b._data.T)
+            # Use swapaxes for proper transpose of last two dimensions
+            # This handles both 2D and batched (3D+) tensors correctly
+            a.grad += np.matmul(out.grad, np.swapaxes(b._data, -1, -2))
         if b.requires_grad:
+            assert b.grad is not None
             assert out.grad is not None
-            b.grad += np.matmul(a._data.T, out.grad)
+            # Use swapaxes for proper transpose of last two dimensions
+            b.grad += np.matmul(np.swapaxes(a._data, -1, -2), out.grad)
 
     out._backward = _backward
     out._prev = [a, b]
@@ -291,7 +296,7 @@ def cos(a: "tensor.Tensor"):
 
     out._backward = _backward
     out._prev = [a]
-    out._op = "sin"
+    out._op = "cos"
     out._is_leaf = False
     return out
 
@@ -323,7 +328,7 @@ def exp(a: "tensor.Tensor"):
 
 def sum(
     a: "tensor.Tensor",
-    axis: int | tuple[int] | None = None,
+    axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ):
     """
@@ -348,7 +353,16 @@ def sum(
         if a.requires_grad:
             assert a.grad is not None
             assert out.grad is not None
-            a.grad += out.grad
+            # Broadcast the gradient back to the original shape
+            grad = out.grad
+            if axis is not None and not keepdims:
+                # Expand dims to match original shape for broadcasting
+                if isinstance(axis, int):
+                    grad = np.expand_dims(grad, axis=axis)
+                else:
+                    for ax in sorted(axis):
+                        grad = np.expand_dims(grad, axis=ax)
+            a.grad += np.broadcast_to(grad, a._data.shape)
 
     out._backward = _backward
     out._prev = [a]
@@ -359,7 +373,7 @@ def sum(
 
 def max(
     a: "tensor.Tensor",
-    axis: int | tuple[int] | None = None,
+    axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
 ):
     """
@@ -374,6 +388,8 @@ def max(
     Returns:
         tensor.Tensor: The result of computing the maximum along the specified axis.
     """
+    # Keep dims for backward computation
+    out_keepdims = np.max(a._data, axis=axis, keepdims=True)
     out = tensor.Tensor(
         np.max(a._data, axis=axis, keepdims=keepdims),
         requires_grad=a.requires_grad,
@@ -381,8 +397,22 @@ def max(
 
     def _backward():
         if a.requires_grad:
-            mask = a._data == out._data
-            a.grad += mask * out.grad
+            assert a.grad is not None
+            assert out.grad is not None
+            # Create mask where input equals the max value (with keepdims for broadcasting)
+            mask = a._data == out_keepdims
+            # Broadcast the gradient back to the original shape
+            grad = out.grad
+            if axis is not None and not keepdims:
+                # Expand dims to match original shape for broadcasting
+                if isinstance(axis, int):
+                    grad = np.expand_dims(grad, axis=axis)
+                else:
+                    for ax in sorted(axis):
+                        grad = np.expand_dims(grad, axis=ax)
+            # Count number of max values to distribute gradient evenly
+            num_max = np.sum(mask, axis=axis, keepdims=True)
+            a.grad += mask * grad / num_max
 
     out._backward = _backward
     out._prev = [a]
@@ -544,7 +574,7 @@ def stack(tensors: list["tensor.Tensor"], axis: int = 0):
 
     out = tensor.Tensor(
         np.stack([t._data for t in tensors], axis=axis),
-        requires_grad=np.any([t.requires_grad for t in tensors]),
+        requires_grad=any(t.requires_grad for t in tensors),
     )
 
     def _backward():

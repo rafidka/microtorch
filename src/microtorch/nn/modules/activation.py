@@ -6,8 +6,6 @@ from .module import Module
 class ReLU(Module[Tensor]):
     """Applies the rectified linear unit function element-wise."""
 
-    inplace: bool
-
     def __init__(self):
         super().__init__()
 

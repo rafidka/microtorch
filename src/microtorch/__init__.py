@@ -16,7 +16,7 @@ def equal(a: tensor.Tensor, b: tensor.Tensor) -> bool:
     Returns:
         bool: True if the tensors are element-wise equal, False otherwise.
     """
-    return np.equal(a._data, b._data).all()
+    return bool(np.equal(a._data, b._data).all())
 
 
 __all__ = ["tensor", "equal"]
