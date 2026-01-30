@@ -59,7 +59,7 @@ def default_collate_fn(batch: list[tuple[Any, ...]]) -> tuple[list[Any] | Tensor
         if [type(elem) for elem in row] != first_row_types:
             raise ValueError("All elements in the batch should have the same type")
 
-    batches: list[Any] = [list() for _ in range(len(batch[0]))]
+    batches: list[Any] = [[] for _ in range(len(batch[0]))]
 
     for row in batch:
         for i, elem in enumerate(row):
@@ -98,6 +98,7 @@ class DataLoader[T]:
             dataset: Dataset to load data from
             batch_size: How many samples per batch to load
             shuffle: Set to True to have the data reshuffled at every epoch
+            collate_fn: Function to merge a list of samples into a batch
         """
         self.dataset = dataset
         self.batch_size = batch_size

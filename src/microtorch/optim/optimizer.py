@@ -9,7 +9,7 @@ class Optimizer(ABC):
     Base class for all optimizers.
     """
 
-    def __init__(self, parameters: Iterable[Parameter], lr: float):
+    def __init__(self, parameters: Iterable[Parameter], lr: float) -> None:
         """
         Base class for all optimizers.
 
@@ -26,7 +26,7 @@ class Optimizer(ABC):
         """Performs a single optimization step (must be implemented in subclass)."""
         raise NotImplementedError
 
-    def zero_grad(self):
+    def zero_grad(self) -> None:
         """Clears the gradients of all optimized parameters."""
         for param in self.parameters:
             param.zero_grad()

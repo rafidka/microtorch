@@ -51,10 +51,42 @@ omit = [
 directory = "coverage_html"
 
 [tool.pyright]
-reportMissingImports = false
 typeCheckingMode = "strict"
 venv = ".venv"
 venvPath = "."
+# Additional strict settings beyond "strict" mode
+reportCallInDefaultInitializer = true
+reportConstantRedefinition = true
+reportDeprecated = true
+reportDuplicateImport = true
+reportImplicitOverride = true
+reportImplicitStringConcatenation = false  # Conflicts with multi-line f-strings
+reportIncompleteStub = true
+reportInconsistentConstructor = true
+reportInvalidStubStatement = true
+reportInvalidTypeVarUse = true
+reportMatchNotExhaustive = true
+reportMissingImports = true
+reportMissingSuperCall = false  # Not always needed in our simple classes
+reportMissingTypeStubs = false  # Allow missing stubs for numpy etc.
+reportPrivateUsage = true
+reportPropertyTypeMismatch = true
+reportShadowedImports = true
+reportUninitializedInstanceVariable = true
+reportUnknownMemberType = false  # PIL Image causes issues
+reportUnnecessaryCast = true
+reportUnnecessaryComparison = false  # PIL optional import causes false positive
+reportUnnecessaryContains = true
+reportUnnecessaryIsInstance = true
+reportUnsupportedDunderAll = true
+reportUnusedCallResult = false  # Too noisy for method chaining
+reportUnusedCoroutine = true
+reportUnusedExpression = true
+reportUnusedImport = true
+reportUnusedVariable = true
+reportWildcardImportFromLibrary = true
+# Exclude test files from strict type checking (common practice)
+ignore = ["tests/**", "scripts/**", "notebooks/**"]
 
 [tool.pytest.ini_options]
 addopts = """
@@ -71,35 +103,136 @@ xfail_strict = true
 [tool.ruff]
 line-length = 88
 target-version = "py312"
-include = [
-    "microtorch/**/*.py",
-    "tests/**/*.py",
-]
+src = ["src", "tests"]
 
 [tool.ruff.lint]
-extend-select = [
-    "Q",
-    "RUF100",
-    "C90",
-    "UP",
-    "I",
-    "D",
+select = [
+    "A",      # flake8-builtins
+    "ANN",    # flake8-annotations
+    "ARG",    # flake8-unused-arguments
+    "ASYNC",  # flake8-async
+    "B",      # flake8-bugbear
+    "BLE",    # flake8-blind-except
+    "C4",     # flake8-comprehensions
+    "C90",    # mccabe complexity
+    "COM",    # flake8-commas
+    "D",      # pydocstyle
+    "DTZ",    # flake8-datetimez
+    "E",      # pycodestyle errors
+    "EM",     # flake8-errmsg
+    "EXE",    # flake8-executable
+    "F",      # Pyflakes
+    "FA",     # flake8-future-annotations
+    "FBT",    # flake8-boolean-trap
+    "FLY",    # flynt
+    "FURB",   # refurb
+    "G",      # flake8-logging-format
+    "I",      # isort
+    "ICN",    # flake8-import-conventions
+    "INP",    # flake8-no-pep420
+    "ISC",    # flake8-implicit-str-concat
+    "LOG",    # flake8-logging
+    "N",      # pep8-naming
+    "NPY",    # NumPy-specific rules
+    "PD",     # pandas-vet
+    "PERF",   # Perflint
+    "PGH",    # pygrep-hooks
+    "PIE",    # flake8-pie
+    "PL",     # Pylint
+    "PT",     # flake8-pytest-style
+    "PTH",    # flake8-use-pathlib
+    "PYI",    # flake8-pyi
+    "Q",      # flake8-quotes
+    "RET",    # flake8-return
+    "RSE",    # flake8-raise
+    "RUF",    # Ruff-specific rules
+    "S",      # flake8-bandit (security)
+    "SIM",    # flake8-simplify
+    "SLF",    # flake8-self
+    "SLOT",   # flake8-slots
+    "T10",    # flake8-debugger
+    "T20",    # flake8-print
+    "TCH",    # flake8-type-checking
+    "TID",    # flake8-tidy-imports
+    "TRY",    # tryceratops
+    "UP",     # pyupgrade
+    "W",      # pycodestyle warnings
+    "YTT",    # flake8-2020
 ]
-isort = { combine-as-imports = true, known-first-party = ["microtorch"] }
-mccabe = { max-complexity = 15 }
 ignore = [
-    "D100", # ignore missing docstring in module
-    "D102", # ignore missing docstring in public method
-    "D104", # ignore missing docstring in public package
-    "D105", # ignore missing docstring in magic methods
-    "D107", # ignore missing docstring in __init__ methods
-    "D200", # ignore one-line docstring should not be in multi-line format
-    "D212", # ignore multi-line docstring summary should start at the second line
+    # Docstring rules - relaxed for practicality
+    "D100",   # Missing docstring in public module
+    "D102",   # Missing docstring in public method - too noisy for internal methods
+    "D104",   # Missing docstring in public package
+    "D105",   # Missing docstring in magic method
+    "D107",   # Missing docstring in __init__
+    "D200",   # One-line docstring should fit on one line
+    "D212",   # Multi-line docstring summary should start at second line
+    # Annotation rules - relaxed for practical reasons
+    "ANN401", # Dynamically typed expressions (Any) are disallowed - too strict
+    # Other practical relaxations
+    "COM812", # Missing trailing comma - conflicts with formatter
+    "EM101",  # Exception string literal - too strict
+    "EM102",  # Exception f-string - too strict
+    "ISC001", # Single line implicit string concatenation - conflicts with formatter
+    "PLR0913", # Too many arguments - sometimes necessary
+    "PLR2004", # Magic value comparison - too noisy
+    "S101",   # Use of assert - needed for implementation assertions
+    "TRY003", # Long exception messages - acceptable
+    # PyTorch API compatibility
+    "A002",   # Argument shadowing builtin - `input` is PyTorch convention
+    "A004",   # Import shadowing builtin - `sum` is intentional re-export
+    "FBT001", # Boolean positional arg - follows PyTorch API design
+    "FBT002", # Boolean default positional arg - follows PyTorch API design
+    "N812",   # Lowercase imported as non-lowercase - `functional as F` is PyTorch convention
+    # Internal implementation details
+    "A001",   # Variable shadowing builtin - `sum`, `max` are intentional PyTorch-style names
+    "D101",   # Missing docstring in public class - relaxed for utility classes
+    "PGH003", # Specific type: ignore codes - too verbose for simple cases
+    "RET504", # Unnecessary variable assignment - sometimes clearer for readability
+    "RET505", # Unnecessary else after return - sometimes clearer for readability
+    "SLF001", # Private member access - functional.py needs access to tensor internals
+    "TC001",  # Type checking imports - not critical for this codebase size
+    "TC003",  # Type checking imports for stdlib - not critical for this codebase size
 ]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["microtorch"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["D"]
-"docs/**/*.py" = ["D"]
+"tests/**/*.py" = [
+    "ANN",     # Annotations not required in tests
+    "ARG",     # Unused arguments (fixtures) fine in tests
+    "D",       # Docstrings not required in tests
+    "FBT",     # Boolean positional args fine in tests
+    "PLR2004", # Magic values fine in tests
+    "PT011",   # pytest.raises too broad - acceptable
+    "S101",    # Assert is fine in tests
+    "SLF001",  # Private member access fine in tests
+]
+"scripts/**/*.py" = [
+    "ANN",     # Annotations not required in scripts
+    "D",       # Docstrings not required in scripts
+    "INP001",  # Implicit namespace package fine for scripts
+    "T20",     # Print statements fine in scripts
+]
+"notebooks/**/*.py" = [
+    "ANN",     # Annotations not required in notebooks
+    "D",       # Docstrings not required in notebooks
+    "T20",     # Print statements fine in notebooks
+]
+# Internal implementation modules that need private member access
+"src/microtorch/tensor/functional.py" = [
+    "ANN202",  # Private _backward functions don't need annotations
+]
+"src/microtorch/tensor/backprop.py" = [
+    "C417",    # map() usage is clearer here
+    "PLR1704", # Redefining `tensor` variable is intentional in iteration
+]

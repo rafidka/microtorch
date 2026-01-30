@@ -12,7 +12,7 @@ class ParameterIterator[T]:
         module: "module.Module[T]",
         recurse: bool = True,
         remove_duplicate: bool = True,
-    ):
+    ) -> None:
         self.module = module
         self.recurse = recurse
         self.remove_duplicate = remove_duplicate
@@ -40,7 +40,7 @@ class NamedParameterIterator[T]:
         module: "module.Module[T]",
         recurse: bool = True,
         remove_duplicate: bool = True,
-    ):
+    ) -> None:
         self.module = module
         self.recurse = recurse
         self.remove_duplicate = remove_duplicate

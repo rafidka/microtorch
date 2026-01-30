@@ -1,6 +1,6 @@
 # Python imports
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Self, override
 
 # 3rd-party imports
 import numpy as np
@@ -25,7 +25,7 @@ class Tensor:
 
     def __init__(
         self, data: np.ndarray[Any, Any] | list[Any], requires_grad: bool = False
-    ):
+    ) -> None:
         # `data` is a single float or list of floats representing the tensor
         self._data: np.ndarray[Any, Any] = (
             data if isinstance(data, np.ndarray) else np.array(data)
@@ -40,7 +40,7 @@ class Tensor:
         self._prev: list[Tensor] = []
         self._topo_order = 1
 
-    def _move(self, other: "Tensor"):
+    def _move(self, other: "Tensor") -> None:
         self._data = other._data
         self.requires_grad = other.requires_grad
         self.grad = other.grad
@@ -70,57 +70,57 @@ class Tensor:
     def __len__(self) -> int:
         return len(self._data)
 
-    def __add__(self, other: "Tensor"):
+    def __add__(self, other: "Tensor") -> "Tensor":
         return F.add(self, other)
 
-    def __radd__(self, other: "Tensor | int | float"):
+    def __radd__(self, other: "Tensor | int | float") -> "Tensor":
         if not isinstance(other, Tensor):
             other = Tensor(np.array(other))
         return F.add(other, self)
 
-    def __iadd__(self, other: "Tensor"):
+    def __iadd__(self, other: "Tensor") -> Self:
         self._move(F.add(self, other))
         return self
 
-    def __sub__(self, other: "Tensor"):
+    def __sub__(self, other: "Tensor") -> "Tensor":
         return F.sub(self, other)
 
-    def __rsub__(self, other: "Tensor | int | float"):
+    def __rsub__(self, other: "Tensor | int | float") -> "Tensor":
         if not isinstance(other, Tensor):
             other = Tensor(np.array(other))
         return F.sub(other, self)
 
-    def __isub__(self, other: "Tensor"):
+    def __isub__(self, other: "Tensor") -> Self:
         self._move(F.sub(self, other))
         return self
 
-    def __neg__(self):
+    def __neg__(self) -> "Tensor":
         return F.neg(self)
 
-    def __mul__(self, other: "Tensor"):
+    def __mul__(self, other: "Tensor") -> "Tensor":
         return F.mul(self, other)
 
-    def __rmul__(self, other: "Tensor | int | float"):
+    def __rmul__(self, other: "Tensor | int | float") -> "Tensor":
         if not isinstance(other, Tensor):
             other = Tensor(np.array(other))
         return F.mul(other, self)
 
-    def __imul__(self, other: "Tensor"):
+    def __imul__(self, other: "Tensor") -> Self:
         self._move(F.mul(self, other))
         return self
 
-    def __matmul__(self, other: "Tensor"):
+    def __matmul__(self, other: "Tensor") -> "Tensor":
         return F.matmul(self, other)
 
-    def __truediv__(self, other: "Tensor"):
+    def __truediv__(self, other: "Tensor") -> "Tensor":
         return F.div(self, other)
 
-    def __rtruediv__(self, other: "Tensor | int | float"):
+    def __rtruediv__(self, other: "Tensor | int | float") -> "Tensor":
         if not isinstance(other, Tensor):
             other = Tensor(np.array(other))
         return F.div(other, self)
 
-    def __itruediv__(self, other: "Tensor"):
+    def __itruediv__(self, other: "Tensor") -> Self:
         self._move(F.div(self, other))
         return self
 
@@ -131,15 +131,19 @@ class Tensor:
         else:
             return F.reshape(self, shape)  # type: ignore
 
-    def backward(self):
+    def backward(self) -> None:
         return backprop.backward(self)
 
-    def item(self):
+    def item(self) -> float:
         if self._data.size != 1:
             raise ValueError(
                 "only one element tensors can be converted to Python scalars"
             )
-        return self._data.item()
+        return self._data.item()  # type: ignore[return-value]
 
-    def __repr__(self):
-        return f"Tensor(data={self._data}, shape={self.shape}, requires_grad={self.requires_grad}, grad={self.grad})"
+    @override
+    def __repr__(self) -> str:
+        return (
+            f"Tensor(data={self._data}, shape={self.shape}, "
+            f"requires_grad={self.requires_grad}, grad={self.grad})"
+        )

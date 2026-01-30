@@ -1,3 +1,5 @@
+from typing import override
+
 import numpy as np
 
 from microtorch.nn.modules.parameter import Parameter
@@ -15,10 +17,11 @@ class Linear(Module[Tensor]):
         out_features (int): Size of each output sample.
     """
 
-    def __init__(self, in_features: int, out_features: int):
+    def __init__(self, in_features: int, out_features: int) -> None:
         super().__init__()
+        rng = np.random.default_rng()
         self.weight = Parameter(
-            np.random.randn(in_features, out_features),
+            rng.standard_normal((in_features, out_features)),
             requires_grad=True,
         )
         self.bias = Parameter(
@@ -28,6 +31,7 @@ class Linear(Module[Tensor]):
         self.in_features = in_features
         self.out_features = out_features
 
+    @override
     def forward(self, input: Tensor) -> Tensor:
         if input.shape[-1] != self.in_features:
             raise ValueError(

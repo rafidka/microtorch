@@ -10,7 +10,7 @@ from microtorch.tensor.utils import identify_broadcasting_dimensions
 
 def _accumulate_broadcasted_gradients(
     grad: np.ndarray[Any, Any], broadcast_dims: tuple[int, ...]
-):
+) -> np.ndarray[Any, Any]:
     """
     Accumulates the gradients along the axes that were broadcasted.
 
@@ -29,7 +29,7 @@ def _accumulate_broadcasted_gradients(
     return np.sum(grad, axis=broadcast_dims, keepdims=True)
 
 
-def add(a: "tensor.Tensor", b: "tensor.Tensor"):
+def add(a: "tensor.Tensor", b: "tensor.Tensor") -> "tensor.Tensor":
     """
     Adds two tensors element-wise.
 
@@ -67,7 +67,7 @@ def add(a: "tensor.Tensor", b: "tensor.Tensor"):
     return out
 
 
-def sub(a: "tensor.Tensor", b: "tensor.Tensor"):
+def sub(a: "tensor.Tensor", b: "tensor.Tensor") -> "tensor.Tensor":
     """
     Subtracts two tensors element-wise.
 
@@ -76,7 +76,7 @@ def sub(a: "tensor.Tensor", b: "tensor.Tensor"):
         b (tensor.Tensor): The second tensor.
 
     Returns:
-        tensor.Tensor: The result of subtracting the second tensor from the first tensor.
+        tensor.Tensor: The result of subtracting the second tensor from the first.
     """
     out = tensor.Tensor(
         a._data - b._data,
@@ -105,7 +105,7 @@ def sub(a: "tensor.Tensor", b: "tensor.Tensor"):
     return out
 
 
-def neg(a: "tensor.Tensor"):
+def neg(a: "tensor.Tensor") -> "tensor.Tensor":
     """
     Negates the elements of the tensor.
 
@@ -133,7 +133,7 @@ def neg(a: "tensor.Tensor"):
     return out
 
 
-def mul(a: "tensor.Tensor", b: "tensor.Tensor"):
+def mul(a: "tensor.Tensor", b: "tensor.Tensor") -> "tensor.Tensor":
     """
     Multiplies two tensors element-wise.
 
@@ -173,7 +173,7 @@ def mul(a: "tensor.Tensor", b: "tensor.Tensor"):
     return out
 
 
-def matmul(a: "tensor.Tensor", b: "tensor.Tensor"):
+def matmul(a: "tensor.Tensor", b: "tensor.Tensor") -> "tensor.Tensor":
     """
     Performs matrix multiplication of two tensors.
 
@@ -221,7 +221,7 @@ def matmul(a: "tensor.Tensor", b: "tensor.Tensor"):
     return out
 
 
-def div(a: "tensor.Tensor", b: "tensor.Tensor"):
+def div(a: "tensor.Tensor", b: "tensor.Tensor") -> "tensor.Tensor":
     """
     Divides two tensors element-wise.
 
@@ -263,7 +263,7 @@ def div(a: "tensor.Tensor", b: "tensor.Tensor"):
     return out
 
 
-def sin(a: "tensor.Tensor"):
+def sin(a: "tensor.Tensor") -> "tensor.Tensor":
     """
     Computes the sine of each element in the tensor.
 
@@ -288,7 +288,7 @@ def sin(a: "tensor.Tensor"):
     return out
 
 
-def cos(a: "tensor.Tensor"):
+def cos(a: "tensor.Tensor") -> "tensor.Tensor":
     """
     Computes the cosine of each element in the tensor.
 
@@ -313,7 +313,7 @@ def cos(a: "tensor.Tensor"):
     return out
 
 
-def exp(a: "tensor.Tensor"):
+def exp(a: "tensor.Tensor") -> "tensor.Tensor":
     """
     Computes the exponential of each element in the tensor.
 
@@ -342,7 +342,7 @@ def sum(
     a: "tensor.Tensor",
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
-):
+) -> "tensor.Tensor":
     """
     Sums the elements of the tensor along the specified axis.
 
@@ -387,7 +387,7 @@ def max(
     a: "tensor.Tensor",
     axis: int | tuple[int, ...] | None = None,
     keepdims: bool = False,
-):
+) -> "tensor.Tensor":
     """
     Computes the maximum of elements along the specified axis.
 
@@ -411,7 +411,7 @@ def max(
         if a.requires_grad:
             assert a.grad is not None
             assert out.grad is not None
-            # Create mask where input equals the max value (with keepdims for broadcasting)
+            # Create mask where input equals the max value (keepdims for broadcasting)
             mask = a._data == out_keepdims
             # Broadcast the gradient back to the original shape
             grad = out.grad
@@ -433,7 +433,7 @@ def max(
     return out
 
 
-def relu(a: "tensor.Tensor"):
+def relu(a: "tensor.Tensor") -> "tensor.Tensor":
     """
     Applies the ReLU (Rectified Linear Unit) function element-wise.
 
@@ -458,7 +458,7 @@ def relu(a: "tensor.Tensor"):
     return out
 
 
-def reshape(a: "tensor.Tensor", shape: tuple[int, ...]):
+def reshape(a: "tensor.Tensor", shape: tuple[int, ...]) -> "tensor.Tensor":
     """
     Reshapes the tensor to the specified shape.
 
@@ -502,7 +502,7 @@ def cross_entropy(logits: "tensor.Tensor", target: "tensor.Tensor") -> "tensor.T
         target (Tensor): The tensor containing the true class indices.
 
     Returns:
-        Tensor: A scalar tensor containing the average cross-entropy loss over the batch.
+        Tensor: A scalar tensor with the average cross-entropy loss over the batch.
     """
     # Check for shape mismatch.
     if logits.shape[0] != target.shape[0]:
@@ -516,7 +516,7 @@ def cross_entropy(logits: "tensor.Tensor", target: "tensor.Tensor") -> "tensor.T
     target_data = target._data.astype(int)
 
     # Number of samples in the batch
-    N: int = logits_data.shape[0]
+    batch_size: int = logits_data.shape[0]
 
     # Compute softmax probabilities
     exps: np.ndarray[Any, Any] = np.exp(
@@ -529,7 +529,7 @@ def cross_entropy(logits: "tensor.Tensor", target: "tensor.Tensor") -> "tensor.T
     eps = 1e-15
     probs_clamped = np.clip(probs, eps, 1 - eps)
     correct_log_probs: np.ndarray[Any, Any] = -np.log(
-        probs_clamped[np.arange(N), target_data]
+        probs_clamped[np.arange(batch_size), target_data]
     )
     loss_value = np.mean(correct_log_probs)
 
@@ -542,8 +542,8 @@ def cross_entropy(logits: "tensor.Tensor", target: "tensor.Tensor") -> "tensor.T
 
         # Gradient wrt logits
         grad_logits = probs.copy()
-        grad_logits[np.arange(N), target_data] -= 1.0
-        grad_logits /= N  # average loss
+        grad_logits[np.arange(batch_size), target_data] -= 1.0
+        grad_logits /= batch_size  # average loss
 
         # Chain rule: multiply by gradient from the next node (out.grad)
         # Note that out is a scalar, so out.grad should be 1 by default,
@@ -560,7 +560,7 @@ def cross_entropy(logits: "tensor.Tensor", target: "tensor.Tensor") -> "tensor.T
     return out
 
 
-def stack(tensors: list["tensor.Tensor"], axis: int = 0):
+def stack(tensors: list["tensor.Tensor"], axis: int = 0) -> "tensor.Tensor":
     """
     Stacks a list of tensors along the specified axis.
 

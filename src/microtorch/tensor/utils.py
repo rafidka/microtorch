@@ -34,7 +34,7 @@ def identify_broadcasting_dimensions(
     shape1_broadcasting: list[int] = []
     shape2_broadcasting: list[int] = []
 
-    for i, (dim1, dim2) in enumerate(zip(padded_shape1, padded_shape2)):
+    for i, (dim1, dim2) in enumerate(zip(padded_shape1, padded_shape2, strict=False)):
         if dim1 == -1:
             # -1 is the special value for padding above, so definitely broadcasting
             shape1_broadcasting.append(i)
@@ -47,11 +47,12 @@ def identify_broadcasting_dimensions(
         elif dim1 != 1 and dim2 == 1:
             # Dimension 2 is 1, so broadcasting
             shape2_broadcasting.append(i)
-        elif dim1 != 1 and dim2 != 1 and dim1 != dim2:
+        elif dim1 != 1 and dim2 not in (1, dim1):
             # Both dimensions are not 1, so broadcasting is not possible
             raise ValueError(
                 f"Incompatible shapes for broadcasting: {shape1} and {shape2}. "
-                f"Dimension {i} has sizes {dim1} and {dim2}, which are different and neither is 1."
+                f"Dimension {i} has sizes {dim1} and {dim2}, "
+                f"which are different and neither is 1."
             )
 
     return tuple(shape1_broadcasting), tuple(shape2_broadcasting)

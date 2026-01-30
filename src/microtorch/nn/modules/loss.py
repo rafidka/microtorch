@@ -1,3 +1,5 @@
+from typing import override
+
 from microtorch.nn.modules.module import Module
 from microtorch.tensor import Tensor, functional as F
 
@@ -11,8 +13,9 @@ class CrossEntropyLoss(Module[Tensor]):
       - target of shape (N,) with class indices in [0, C-1]
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
+    @override
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
         return F.cross_entropy(input, target)

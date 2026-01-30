@@ -12,14 +12,14 @@ class Parameter(Tensor):
 
     def __init__(
         self, data: np.ndarray[Any, Any] | list[Any], requires_grad: bool = False
-    ):
+    ) -> None:
         super().__init__(data, requires_grad)
         if TYPE_CHECKING:
             # Let type checkers know that grad can be None or np.ndarray (for some
             # reason, VSCode complains when I try to set 'grad' to None in test_sgd.py)
             self.grad: np.ndarray[Any, Any] | None
 
-    def zero_grad(self):
+    def zero_grad(self) -> None:
         """Clears the gradients of the parameter."""
         if self.grad is None:
             return

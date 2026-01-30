@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from typing import override
 
 from microtorch.nn.modules.parameter import Parameter
 from microtorch.optim.optimizer import Optimizer
@@ -15,7 +16,7 @@ class SGD(Optimizer):
         self,
         parameters: Iterable[Parameter],
         lr: float = 0.01,
-    ):
+    ) -> None:
         """
         Stochastic Gradient Descent (SGD) optimizer.
 
@@ -25,7 +26,8 @@ class SGD(Optimizer):
         """
         super().__init__(parameters, lr)
 
-    def step(self):
+    @override
+    def step(self) -> None:
         """
         Performs a single optimization step.
         """

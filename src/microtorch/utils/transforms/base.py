@@ -3,7 +3,7 @@
 This module provides image transformations similar to torchvision.transforms.
 """
 
-from typing import TYPE_CHECKING, Any, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, override
 
 import numpy as np
 
@@ -61,6 +61,7 @@ class ToTensor(Transform[Any, Tensor]):
     channel.
     """
 
+    @override
     def __call__(self, pic: Any) -> Tensor:
         """Convert a PIL Image or numpy.ndarray to tensor.
 
@@ -153,6 +154,7 @@ class Normalize(Transform[Tensor, Tensor]):
 
         self.inplace = inplace
 
+    @override
     def __call__(self, tensor: Tensor) -> Tensor:
         """Normalize a tensor image with mean and standard deviation.
 
@@ -171,8 +173,9 @@ class Normalize(Transform[Tensor, Tensor]):
             c = tensor.shape[0]
             if len(self.mean) != c or len(self.std) != c:
                 raise ValueError(
-                    f"Expected mean and std to have {c} elements for a {c}-channel tensor, "
-                    f"but got {len(self.mean)} and {len(self.std)} elements respectively."
+                    f"Expected mean and std to have {c} elements for a "
+                    f"{c}-channel tensor, but got {len(self.mean)} and "
+                    f"{len(self.std)} elements respectively."
                 )
 
             # Reshape mean and std to allow broadcasting over HxW dimensions
@@ -184,8 +187,9 @@ class Normalize(Transform[Tensor, Tensor]):
             c = tensor.shape[1]
             if len(self.mean) != c or len(self.std) != c:
                 raise ValueError(
-                    f"Expected mean and std to have {c} elements for a {c}-channel tensor, "
-                    f"but got {len(self.mean)} and {len(self.std)} elements respectively."
+                    f"Expected mean and std to have {c} elements for a "
+                    f"{c}-channel tensor, but got {len(self.mean)} and "
+                    f"{len(self.std)} elements respectively."
                 )
 
             # Reshape mean and std to allow broadcasting over B, H, W dimensions
@@ -225,6 +229,7 @@ class Compose[T_in, T_out](Transform[T_in, T_out]):
         """
         self.transforms = transforms
 
+    @override
     def __call__(self, input: T_in) -> T_out:
         """Apply transforms sequentially.
 
