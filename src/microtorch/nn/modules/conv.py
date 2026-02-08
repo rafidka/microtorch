@@ -19,8 +19,12 @@ class Conv2d(Module[Tensor]):
     ) -> None:
         super().__init__()
         rng = np.random.default_rng()
+        # Kaiming/He initialization for ReLU networks
+        fan_in = in_channels * kernel_size * kernel_size
+        std = np.sqrt(2.0 / fan_in)
         self.weight = Parameter(
-            rng.standard_normal((out_channels, in_channels, kernel_size, kernel_size)),
+            rng.standard_normal((out_channels, in_channels, kernel_size, kernel_size))
+            * std,
             requires_grad=True,
         )
         self.bias = (

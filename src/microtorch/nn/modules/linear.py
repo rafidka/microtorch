@@ -20,8 +20,10 @@ class Linear(Module[Tensor]):
     def __init__(self, in_features: int, out_features: int) -> None:
         super().__init__()
         rng = np.random.default_rng()
+        # Kaiming/He initialization for ReLU networks
+        std = np.sqrt(2.0 / in_features)
         self.weight = Parameter(
-            rng.standard_normal((in_features, out_features)),
+            rng.standard_normal((in_features, out_features)) * std,
             requires_grad=True,
         )
         self.bias = Parameter(
