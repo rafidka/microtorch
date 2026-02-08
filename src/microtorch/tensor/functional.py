@@ -198,21 +198,31 @@ def matmul(a: "tensor.Tensor", b: "tensor.Tensor") -> "tensor.Tensor":
                 # For A @ v where v is 1D: dL/dA = dL/dout outer v
                 # out.grad has shape (batch..., m), b._data has shape (n,)
                 # We need a.grad shape (batch..., m, n)
-                a.grad += np.outer(out.grad, b._data).reshape(a.grad.shape)
+                g = np.outer(out.grad, b._data).reshape(a.grad.shape)
             else:
                 # Use swapaxes for proper transpose of last two dimensions
                 # This handles both 2D and batched (3D+) tensors correctly
-                a.grad += np.matmul(out.grad, np.swapaxes(b._data, -1, -2))
+                g = np.matmul(out.grad, np.swapaxes(b._data, -1, -2))
+
+            if g.ndim > a.grad.ndim:
+                a.grad += g.sum(axis=tuple(range(g.ndim - a.grad.ndim)))
+            else:
+                a.grad += g
         if b.requires_grad:
             assert b.grad is not None
             assert out.grad is not None
             # Handle 1D vector case for a
             if a._data.ndim == 1:
                 # For v @ B where v is 1D: dL/dB = v outer dL/dout
-                b.grad += np.outer(a._data, out.grad).reshape(b.grad.shape)
+                g = np.outer(a._data, out.grad).reshape(b.grad.shape)
             else:
                 # Use swapaxes for proper transpose of last two dimensions
-                b.grad += np.matmul(np.swapaxes(a._data, -1, -2), out.grad)
+                g = np.matmul(np.swapaxes(a._data, -1, -2), out.grad)
+
+            if g.ndim > b.grad.ndim:
+                b.grad += g.sum(axis=tuple(range(g.ndim - b.grad.ndim)))
+            else:
+                b.grad += g
 
     out._backward = _backward
     out._prev = [a, b]
@@ -609,3 +619,262 @@ def stack(tensors: list["tensor.Tensor"], axis: int = 0) -> "tensor.Tensor":
     out._op = "stack"
     out._is_leaf = False
     return out
+
+
+def _im2col_np(
+    im: np.ndarray[Any, Any],
+    kernel: int,
+    stride: int,
+    padding: int,
+) -> np.ndarray[Any, Any]:
+    """
+    Reshape a 4D image numpy array into a 3D column format.
+
+    The input image is expected to be of shape (N, C, H, W). The output is a 3D array
+    of shape (N, C * kernel * kernel, H_out * W_out), where H_out and W_out are
+    calculated as follows:
+
+    H_out = (H + 2 * padding - kernel) // stride + 1
+    W_out = (W + 2 * padding - kernel) // stride + 1
+
+    The goal of this function is to convert the 4D image into a 3D column format that
+    can be used for convolution. It is used by the im2col function below (the one that
+    deals with tensors).
+
+    Args:
+        im (np.ndarray): The input image of shape (N, C, H, W).
+        kernel (int): The kernel size (height and width).
+        stride (int): The stride for the sliding window.
+        padding (int): The zero-padding applied to height and width.
+
+    Returns:
+        np.ndarray: The output of shape (N, C * kernel * kernel, H_out * W_out).
+
+    Raises:
+        ValueError: If the input tensor is not 4D.
+    """
+    if im.ndim != 4:
+        raise ValueError(
+            f"Expected input tensor to be 4D, but got {im.ndim}D tensor instead."
+        )
+
+    N, C, H, W = im.shape  # noqa: N806
+
+    if padding > 0:
+        im = np.pad(
+            im,
+            (
+                (0, 0),  # batch dimension; no padding needed
+                (0, 0),  # channel dimension; no padding needed
+                (padding, padding),  # height dimension
+                (padding, padding),  # width dimension
+            ),
+            mode="constant",
+            constant_values=0,
+        )
+
+    H_out = (H + 2 * padding - kernel) // stride + 1  # noqa: N806
+    W_out = (W + 2 * padding - kernel) // stride + 1  # noqa: N806
+    cols: np.ndarray[Any, Any] = np.zeros(
+        (N, C * kernel * kernel, H_out * W_out), dtype=im.dtype
+    )
+
+    for n in range(N):
+        for c in range(C):
+            for y in range(H_out):
+                for x in range(W_out):
+                    h_start = y * stride
+                    h_end = h_start + kernel
+                    w_start = x * stride
+                    w_end = w_start + kernel
+
+                    spatial_idx = y * W_out + x
+                    patch = im[n, c, h_start:h_end, w_start:w_end].flatten()
+                    c_start = c * kernel * kernel
+                    c_end = (c + 1) * kernel * kernel
+                    cols[n, c_start:c_end, spatial_idx] = patch
+
+    return cols
+
+
+def _col2im_np(
+    cols: np.ndarray[Any, Any],
+    input_shape: tuple[int, ...],
+    kernel: int,
+    stride: int,
+    padding: int,
+) -> np.ndarray[Any, Any]:
+    """
+    The inverse of the _im2col_np function.
+
+    The utility of this function is for the backward pass of the im2col function.
+    Basically, when a call is made to im2col (the tensor version), the gradient must
+    be calculated. Since the output of im2col is a reshaped version of the input, the
+    gradient of the output must be reshaped back to the original shape of the input.
+
+    Args:
+        cols (np.ndarray): The input in column format of shape (N, C * kernel * kernel,
+            H_out * W_out).
+        input_shape (tuple[int]): The shape of the input image.
+        kernel (int): The kernel size (height and width).
+        stride (int): The stride for the sliding window.
+        padding (int): The zero-padding applied to height and width.
+
+    Returns:
+        np.ndarray: The output image of shape (N, C, H, W).
+
+    Raises:
+        ValueError: If the cols input has the wrong shape.
+    """
+    N, C, H, W = input_shape  # noqa: N806
+    H_out = (H + 2 * padding - kernel) // stride + 1  # noqa: N806
+    W_out = (W + 2 * padding - kernel) // stride + 1  # noqa: N806
+
+    # Ensure that the cols input has the correct shape
+    if cols.shape != (N, C * kernel * kernel, H_out * W_out):
+        raise ValueError(
+            f"Expected columns to have shape ({N}, {C * kernel * kernel}, "
+            f"{H_out * W_out}), but got ({cols.shape[0]}, {cols.shape[1]}, "
+            f"{cols.shape[2]})."
+        )
+
+    im = np.zeros((N, C, H + 2 * padding, W + 2 * padding))
+
+    for n in range(N):
+        for c in range(C):
+            for y in range(H_out):
+                for x in range(W_out):
+                    h_start = y * stride
+                    h_end = h_start + kernel
+                    w_start = x * stride
+                    w_end = w_start + kernel
+
+                    spatial_idx = y * W_out + x
+                    c_start = c * kernel * kernel
+                    c_end = (c + 1) * kernel * kernel
+                    im[n, c, h_start:h_end, w_start:w_end] += cols[
+                        n, c_start:c_end, spatial_idx
+                    ].reshape(kernel, kernel)
+
+    if padding > 0:
+        return im[:, :, padding:-padding, padding:-padding]
+
+    return im
+
+
+def im2col(
+    input: "tensor.Tensor", kernel: int, stride: int, padding: int
+) -> "tensor.Tensor":
+    """
+    Reshapes a 4D image tensor into column format for convolution.
+
+    Notice that this function is differentiable with respect to the input tensor.
+
+    Args:
+        input: 4D tensor of shape (N, C, H, W).
+        kernel: Kernel size (height and width).
+        stride: Stride for the sliding window.
+        padding: Zero-padding applied to height and width.
+
+    Returns:
+        Tensor of shape (N, C * kernel * kernel, H_out * W_out).
+    """
+    cols_data = _im2col_np(input._data, kernel, stride, padding)
+    out = tensor.Tensor(cols_data, requires_grad=input.requires_grad)
+
+    def _backward():
+        if input.requires_grad:
+            assert input.grad is not None
+            assert out.grad is not None
+            input.grad += _col2im_np(out.grad, input.shape, kernel, stride, padding)
+
+    out._backward = _backward
+    out._prev = [input]
+    out._op = "im2col"
+    out._is_leaf = False
+    return out
+
+
+def conv2d(
+    input: "tensor.Tensor",
+    weight: "tensor.Tensor",
+    bias: "tensor.Tensor | None" = None,
+    stride: int = 1,
+    padding: int = 0,
+) -> "tensor.Tensor":
+    """
+    Performs 2D convolution of a 4D input tensor with a 4D weight tensor.
+
+    Args:
+        input: 4D tensor of shape (N, C, H, W).
+        weight: 4D tensor of shape (C_out, C_in, k, k).
+        bias: 1D tensor of shape (C_out,).
+        stride: Stride for the sliding window.
+        padding: Zero-padding applied to height and width.
+
+    Returns:
+        Tensor of shape (N, C_out, H_out, W_out).
+
+    Raises:
+        ValueError: If the input or weight tensor is not 4D.
+        ValueError: If the bias tensor is not 1D or has the wrong shape.
+        ValueError: If the weight tensor's 3rd and 4th dimensions (kernel height and
+            width) are not the same.
+        ValueError: If the second dimensions of the input and weight tensors are not
+            the same.
+    """
+    if input.ndim != 4:
+        raise ValueError(
+            f"Expected input tensor to be 4D, but got {input.ndim}D tensor instead."
+        )
+    if weight.ndim != 4:
+        raise ValueError(
+            f"Expected weight tensor to be 4D, but got {weight.ndim}D tensor instead."
+        )
+
+    # Verify the shape of the bias.
+    if bias is not None:
+        if bias.ndim != 1:
+            raise ValueError(
+                f"Expected bias tensor to be 1D, but got {bias.ndim}D tensor instead."
+            )
+        if bias.shape != (weight.shape[0],):
+            raise ValueError(
+                f"Expected bias tensor to have shape ({weight.shape[0]},), "
+                f"but got {bias.shape}."
+            )
+
+    N, C_in, H, W = input.shape  # noqa: N806
+    C_out, C_in_, kh, kw = weight.shape  # noqa: N806
+
+    if kh != kw:
+        raise ValueError(
+            f"Expected kernel height and width to be the same, but got {kh} and {kw}."
+        )
+
+    if C_in != C_in_:
+        raise ValueError(
+            f'Expected "input" C dimension to be the same as the "weight" C '
+            f"dimension, but got {C_in} and {C_in_}."
+        )
+
+    kernel = kh
+
+    H_out = (H + 2 * padding - kernel) // stride + 1  # noqa: N806
+    W_out = (W + 2 * padding - kernel) // stride + 1  # noqa: N806
+
+    # cols shape (N, C_in * kernel * kernel, H_out * W_out)
+    cols = im2col(input, kernel, stride, padding)
+
+    # weight_flat shape (C_out, C_in * kernel * kernel)
+    weight_flat = reshape(weight, (C_out, -1))
+
+    # output shape (N, C_out, H_out * W_out)
+    output_before_reshape = matmul(weight_flat, cols)
+
+    output = reshape(output_before_reshape, (N, C_out, H_out, W_out))
+
+    if bias is not None:
+        output = output + bias.reshape(1, C_out, 1, 1)
+
+    return output
