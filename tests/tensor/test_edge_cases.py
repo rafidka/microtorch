@@ -117,7 +117,8 @@ class TestInfHandling:
     def test_inf_from_exp_overflow(self):
         """Test that exp of large values produces inf."""
         a = Tensor(np.array([1.0, 1000.0]))  # 1000 will overflow
-        result = F.exp(a)
+        with np.errstate(over="ignore"):
+            result = F.exp(a)
         assert np.isinf(result.numpy()[1])
         assert np.isfinite(result.numpy()[0])
 
@@ -133,14 +134,16 @@ class TestInfHandling:
         """Test inf * 0 = nan."""
         a = Tensor(np.array([np.inf]))
         b = Tensor(np.array([0.0]))
-        result = a * b
+        with np.errstate(invalid="ignore"):
+            result = a * b
         assert np.isnan(result.item())
 
     def test_div_by_zero(self):
         """Test division by zero produces inf."""
         a = Tensor(np.array([1.0, -1.0, 0.0]))
         b = Tensor(np.array([0.0, 0.0, 0.0]))
-        result = a / b
+        with np.errstate(divide="ignore", invalid="ignore"):
+            result = a / b
         assert np.isinf(result.numpy()[0])  # 1/0 = inf
         assert np.isinf(result.numpy()[1])  # -1/0 = -inf
         assert np.isnan(result.numpy()[2])  # 0/0 = nan
