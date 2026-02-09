@@ -507,3 +507,61 @@ def test_conv2d_channel_mismatch():
     weight = Tensor(np.zeros((1, 2, 2, 2)))  # C_in = 2 - mismatch!
     with pytest.raises(ValueError, match="C dimension"):
         F.conv2d(input, weight)
+
+
+def test_conv2d_invalid_bias_shape():
+    # Bias shape must match C_out
+    input = Tensor(np.zeros((1, 1, 5, 5)))
+    weight = Tensor(np.zeros((4, 1, 3, 3)))  # C_out = 4
+    bias = Tensor(np.zeros((2,)))  # Wrong: should be (4,)
+    with pytest.raises(ValueError, match="bias tensor to have shape"):
+        F.conv2d(input, weight, bias)
+
+
+def test_conv2d_non_square_kernel():
+    # Kernel height and width must be the same
+    input = Tensor(np.zeros((1, 1, 5, 5)))
+    weight = Tensor(np.zeros((1, 1, 3, 2)))  # kh=3, kw=2 - not square!
+    with pytest.raises(ValueError, match="kernel height and width"):
+        F.conv2d(input, weight)
+
+
+def test_im2col_np_invalid_input_dim():
+    # _im2col_np requires 4D input
+    invalid_input = np.zeros((3, 3, 3))  # 3D - wrong
+    with pytest.raises(ValueError, match="4D"):
+        F._im2col_np(invalid_input, kernel=2, stride=1, padding=0)
+
+
+def test_im2col_backward_no_grad():
+    # Test im2col backward when input doesn't require grad
+    # This tests the branch where input.requires_grad is False (line 786->exit)
+    x = Tensor(np.random.randn(1, 1, 4, 4), requires_grad=False)
+    out = F.im2col(x, kernel=2, stride=1, padding=0)
+
+    # out shape is (1, 4, 9), out.requires_grad should be False
+    assert out.requires_grad is False
+
+    # Multiply by a tensor that requires grad to create a computation graph
+    multiplier = Tensor(np.ones_like(out.numpy()), requires_grad=True)
+    result = F.mul(out, multiplier)
+
+    # Sum and backward
+    loss = F.sum(result)
+    loss.backward()
+
+    # x should have no gradient since requires_grad=False
+    assert x.grad is None
+    # multiplier should have gradient
+    assert multiplier.grad is not None
+
+
+def test_col2im_np_invalid_cols_shape():
+    # _col2im_np requires cols with correct shape
+    input_shape = (1, 1, 4, 4)  # N=1, C=1, H=4, W=4
+    kernel, stride, padding = 2, 1, 0
+    # H_out = (4 + 0 - 2) // 1 + 1 = 3, W_out = 3
+    # Expected cols shape: (1, 1*2*2, 3*3) = (1, 4, 9)
+    wrong_cols = np.zeros((1, 4, 16))  # Wrong: should be (1, 4, 9)
+    with pytest.raises(ValueError, match="Expected columns to have shape"):
+        F._col2im_np(wrong_cols, input_shape, kernel, stride, padding)

@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from microtorch.tensor import functional as F, tensor
+from tests.utils.grad import numerical_grad_np
 
 # pyright: reportPrivateUsage=false
 
@@ -350,6 +351,73 @@ def test_matmul_with_rhs_grad():
     assert a.grad is None
     assert b.grad is not None
     assert np.array_equal(b.grad, np.array([[4, 4], [13, 13]]))
+
+
+def test_matmul_broadcast_gradient_a():
+    # Test matmul where 2D @ 3D requires gradient accumulation over batch dim for a
+
+    rng = np.random.default_rng(42)
+
+    # a: 2D matrix (3, 4), b: 3D batched tensor (2, 4, 5)
+    # Result: (2, 3, 5) - a is broadcast to each batch
+    a_data = rng.standard_normal((3, 4))
+    b_data = rng.standard_normal((2, 4, 5))
+
+    a = tensor.Tensor(a_data.copy(), requires_grad=True)
+    b = tensor.Tensor(b_data.copy(), requires_grad=True)
+
+    result = F.matmul(a, b)
+    assert result.shape == (2, 3, 5)
+
+    F.sum(result).backward()
+
+    # Both should have gradients with correct shapes
+    assert a.grad is not None
+    assert b.grad is not None
+    assert a.grad.shape == (3, 4)
+    assert b.grad.shape == (2, 4, 5)
+
+    # Verify gradient values using numerical gradient checking
+    def f(a_np: np.ndarray, b_np: np.ndarray) -> float:
+        return float(np.sum(a_np @ b_np))
+
+    expected_grads = numerical_grad_np(f, a_data, b_data)
+    np.testing.assert_allclose(a.grad, expected_grads[0], rtol=1e-5, atol=1e-5)
+    np.testing.assert_allclose(b.grad, expected_grads[1], rtol=1e-5, atol=1e-5)
+
+
+def test_matmul_broadcast_gradient_b():
+    # Test matmul where 3D @ 2D requires gradient accumulation over batch dim for b
+    # This tests line 223 in functional.py: b.grad += g.sum(axis=...)
+
+    rng = np.random.default_rng(42)
+
+    # a: 3D batched tensor (2, 3, 4), b: 2D matrix (4, 5)
+    # Result: (2, 3, 5) - b is broadcast to each batch
+    a_data = rng.standard_normal((2, 3, 4))
+    b_data = rng.standard_normal((4, 5))
+
+    a = tensor.Tensor(a_data.copy(), requires_grad=True)
+    b = tensor.Tensor(b_data.copy(), requires_grad=True)
+
+    result = F.matmul(a, b)
+    assert result.shape == (2, 3, 5)
+
+    F.sum(result).backward()
+
+    # Both should have gradients with correct shapes
+    assert a.grad is not None
+    assert b.grad is not None
+    assert a.grad.shape == (2, 3, 4)
+    assert b.grad.shape == (4, 5)
+
+    # Verify gradient values using numerical gradient checking
+    def f(a_np: np.ndarray, b_np: np.ndarray) -> float:
+        return float(np.sum(a_np @ b_np))
+
+    expected_grads = numerical_grad_np(f, a_data, b_data)
+    np.testing.assert_allclose(a.grad, expected_grads[0], rtol=1e-5, atol=1e-5)
+    np.testing.assert_allclose(b.grad, expected_grads[1], rtol=1e-5, atol=1e-5)
 
 
 def test_div_with_grads():

@@ -206,6 +206,33 @@ class TestNormalize:
             result.numpy(), np.zeros((3, 2, 2), dtype=np.float32)
         )
 
+    def test_normalize_inplace(self):
+        """Test normalize with inplace=True skips cloning."""
+        data = np.ones((3, 2, 2), dtype=np.float32) * 0.5
+        tensor = Tensor(data)
+
+        mean = [0.5, 0.5, 0.5]
+        std = [0.5, 0.5, 0.5]
+        # inplace=True means the input tensor is used directly without cloning
+        # (though the actual math still returns a new tensor)
+        transform = Normalize(mean=mean, std=std, inplace=True)
+        result = transform(tensor)
+
+        # Result should be normalized: (0.5 - 0.5) / 0.5 = 0
+        np.testing.assert_array_almost_equal(
+            result.numpy(), np.zeros((3, 2, 2), dtype=np.float32)
+        )
+
+
+class TestToTensorInvalidInput:
+    """Tests for ToTensor with invalid input types."""
+
+    def test_to_tensor_invalid_type(self):
+        """Test that ToTensor raises TypeError for invalid input types."""
+        transform = ToTensor()
+        with pytest.raises(TypeError, match=r"Expected numpy.ndarray or PIL Image"):
+            transform([1, 2, 3])  # List is not a valid input type
+
 
 class TestCompose:
     """Tests for the Compose transform."""

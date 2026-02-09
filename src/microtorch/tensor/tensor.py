@@ -73,10 +73,10 @@ class Tensor:
     def __add__(self, other: "Tensor") -> "Tensor":
         return F.add(self, other)
 
-    def __radd__(self, other: "Tensor | int | float") -> "Tensor":
-        if not isinstance(other, Tensor):
-            other = Tensor(np.array(other))
-        return F.add(other, self)
+    def __radd__(self, other: float) -> "Tensor":
+        # __radd__ is only called when the left operand (int/float) doesn't support
+        # addition with Tensor. If left operand were a Tensor, __add__ would be used.
+        return F.add(Tensor(np.array(other)), self)
 
     def __iadd__(self, other: "Tensor") -> Self:
         self._move(F.add(self, other))
@@ -85,10 +85,10 @@ class Tensor:
     def __sub__(self, other: "Tensor") -> "Tensor":
         return F.sub(self, other)
 
-    def __rsub__(self, other: "Tensor | int | float") -> "Tensor":
-        if not isinstance(other, Tensor):
-            other = Tensor(np.array(other))
-        return F.sub(other, self)
+    def __rsub__(self, other: float) -> "Tensor":
+        # __rsub__ is only called when the left operand (int/float) doesn't support
+        # subtraction with Tensor. If left operand were a Tensor, __sub__ would be used.
+        return F.sub(Tensor(np.array(other)), self)
 
     def __isub__(self, other: "Tensor") -> Self:
         self._move(F.sub(self, other))
@@ -100,10 +100,10 @@ class Tensor:
     def __mul__(self, other: "Tensor") -> "Tensor":
         return F.mul(self, other)
 
-    def __rmul__(self, other: "Tensor | int | float") -> "Tensor":
-        if not isinstance(other, Tensor):
-            other = Tensor(np.array(other))
-        return F.mul(other, self)
+    def __rmul__(self, other: float) -> "Tensor":
+        # __rmul__ is only called when the left operand (int/float) doesn't support
+        # multiplication with Tensor. If left operand were a Tensor, __mul__ would be used.
+        return F.mul(Tensor(np.array(other)), self)
 
     def __imul__(self, other: "Tensor") -> Self:
         self._move(F.mul(self, other))
@@ -115,10 +115,10 @@ class Tensor:
     def __truediv__(self, other: "Tensor") -> "Tensor":
         return F.div(self, other)
 
-    def __rtruediv__(self, other: "Tensor | int | float") -> "Tensor":
-        if not isinstance(other, Tensor):
-            other = Tensor(np.array(other))
-        return F.div(other, self)
+    def __rtruediv__(self, other: float) -> "Tensor":
+        # __rtruediv__ is only called when the left operand (int/float) doesn't support
+        # division with Tensor. If left operand were a Tensor, __truediv__ would be used.
+        return F.div(Tensor(np.array(other)), self)
 
     def __itruediv__(self, other: "Tensor") -> Self:
         self._move(F.div(self, other))
