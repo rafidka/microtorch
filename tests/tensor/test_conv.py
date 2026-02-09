@@ -536,7 +536,7 @@ def test_im2col_np_invalid_input_dim():
 def test_im2col_backward_no_grad():
     # Test im2col backward when input doesn't require grad
     # This tests the branch where input.requires_grad is False (line 786->exit)
-    x = Tensor(np.random.randn(1, 1, 4, 4), requires_grad=False)
+    x = Tensor(rnd.standard_normal((1, 1, 4, 4)), requires_grad=False)
     out = F.im2col(x, kernel=2, stride=1, padding=0)
 
     # out shape is (1, 4, 9), out.requires_grad should be False

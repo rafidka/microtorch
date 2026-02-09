@@ -101,8 +101,7 @@ class Tensor:
         return F.mul(self, other)
 
     def __rmul__(self, other: float) -> "Tensor":
-        # __rmul__ is only called when the left operand (int/float) doesn't support
-        # multiplication with Tensor. If left operand were a Tensor, __mul__ would be used.
+        # Only called for int/float * Tensor (Tensor * Tensor uses __mul__)
         return F.mul(Tensor(np.array(other)), self)
 
     def __imul__(self, other: "Tensor") -> Self:
@@ -116,8 +115,7 @@ class Tensor:
         return F.div(self, other)
 
     def __rtruediv__(self, other: float) -> "Tensor":
-        # __rtruediv__ is only called when the left operand (int/float) doesn't support
-        # division with Tensor. If left operand were a Tensor, __truediv__ would be used.
+        # Only called for int/float / Tensor (Tensor / Tensor uses __truediv__)
         return F.div(Tensor(np.array(other)), self)
 
     def __itruediv__(self, other: "Tensor") -> Self:

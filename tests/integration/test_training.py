@@ -5,12 +5,15 @@ correctly in realistic training scenarios.
 """
 
 import numpy as np
-import pytest
 
+import microtorch
 from microtorch.nn import CrossEntropyLoss, Linear, Module, ReLU, Softmax
 from microtorch.optim import SGD
 from microtorch.tensor import Tensor, functional as F
 from microtorch.utils.data import DataLoader, Dataset
+
+# Module-level RNG for reproducible tests
+_rng = np.random.default_rng(42)
 
 
 class XORDataset(Dataset[tuple[Tensor, Tensor]]):
@@ -60,15 +63,15 @@ class TestXORConvergence:
 
     def test_xor_convergence_basic(self):
         """Test that XOR model converges to high accuracy."""
-        np.random.seed(42)
+        microtorch.manual_seed(42)
 
         model = XORModel(hidden_size=8)
         criterion = CrossEntropyLoss()
         optimizer = SGD(model.parameters(), lr=0.5)
 
         # XOR data
-        X = Tensor(np.array([[0, 0], [0, 1], [1, 0], [1, 1]], dtype=np.float32))
-        y = Tensor(np.array([0, 1, 1, 0]))
+        inputs = Tensor(np.array([[0, 0], [0, 1], [1, 0], [1, 1]], dtype=np.float32))
+        targets = Tensor(np.array([0, 1, 1, 0]))
 
         initial_loss = None
         final_loss = None
@@ -76,8 +79,8 @@ class TestXORConvergence:
         # Train for enough epochs
         for epoch in range(500):
             optimizer.zero_grad()
-            outputs = model(X)
-            loss = criterion(outputs, y)
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
 
             if epoch == 0:
                 initial_loss = loss.item()
@@ -88,14 +91,15 @@ class TestXORConvergence:
             final_loss = loss.item()
 
         # Verify loss decreased significantly
-        assert initial_loss is not None and final_loss is not None
+        assert initial_loss is not None
+        assert final_loss is not None
         assert final_loss < initial_loss * 0.1, (
             f"Loss didn't decrease enough: {initial_loss} -> {final_loss}"
         )
 
         # Check accuracy
         with_softmax = Softmax(dim=1)
-        probs = with_softmax(model(X))
+        probs = with_softmax(model(inputs))
         predictions = np.argmax(probs.numpy(), axis=1)
         expected = np.array([0, 1, 1, 0])
         accuracy = np.mean(predictions == expected)
@@ -104,7 +108,7 @@ class TestXORConvergence:
 
     def test_xor_convergence_with_dataloader(self):
         """Test XOR with DataLoader integration."""
-        np.random.seed(42)
+        microtorch.manual_seed(42)
 
         dataset = XORDataset()
         dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
@@ -114,7 +118,7 @@ class TestXORConvergence:
         optimizer = SGD(model.parameters(), lr=0.5)
 
         losses = []
-        for epoch in range(200):
+        for _ in range(200):
             epoch_loss = 0.0
             for batch_x, batch_y in dataloader:
                 optimizer.zero_grad()
@@ -136,14 +140,15 @@ class TestLinearRegression:
 
     def test_linear_regression_convergence(self):
         """Test that linear model can fit a line."""
-        np.random.seed(42)
+        rng = np.random.default_rng(42)
+        microtorch.manual_seed(42)  # For weight initialization
 
         # Generate data: y = 2x + 1 + noise
-        X = np.linspace(-1, 1, 20).reshape(-1, 1).astype(np.float32)
-        y_true = 2 * X + 1
-        y_noise = y_true + np.random.randn(*y_true.shape).astype(np.float32) * 0.1
+        x_data = np.linspace(-1, 1, 20).reshape(-1, 1).astype(np.float32)
+        y_true = 2 * x_data + 1
+        y_noise = y_true + rng.standard_normal(y_true.shape).astype(np.float32) * 0.1
 
-        X_tensor = Tensor(X)
+        x_tensor = Tensor(x_data)
         y_tensor = Tensor(y_noise)
 
         model = LinearRegressionModel()
@@ -154,15 +159,14 @@ class TestLinearRegression:
             diff = pred - target
             return F.sum(diff * diff) / Tensor(np.array(pred.shape[0]))
 
-        initial_loss = None
-        for epoch in range(200):
+        # Capture initial loss
+        initial_pred = model(x_tensor)
+        initial_loss = mse_loss(initial_pred, y_tensor).item()
+
+        for _ in range(200):
             optimizer.zero_grad()
-            pred = model(X_tensor)
+            pred = model(x_tensor)
             loss = mse_loss(pred, y_tensor)
-
-            if epoch == 0:
-                initial_loss = loss.item()
-
             loss.backward()
             optimizer.step()
 
@@ -188,13 +192,14 @@ class TestTrainingLoopComponents:
 
     def test_forward_backward_step_cycle(self):
         """Test a single forward-backward-step cycle."""
-        np.random.seed(42)
+        rng = np.random.default_rng(42)
+        microtorch.manual_seed(42)  # For weight initialization
 
         model = Linear(4, 2)
         optimizer = SGD(model.parameters(), lr=0.01)
         criterion = CrossEntropyLoss()
 
-        x = Tensor(np.random.randn(3, 4).astype(np.float32))
+        x = Tensor(rng.standard_normal((3, 4)).astype(np.float32))
         y = Tensor(np.array([0, 1, 0]))
 
         # Get initial parameters
@@ -227,7 +232,8 @@ class TestTrainingLoopComponents:
 
     def test_multiple_batches(self):
         """Test training over multiple batches."""
-        np.random.seed(42)
+        rng = np.random.default_rng(42)
+        microtorch.manual_seed(42)  # For weight initialization
 
         model = Linear(4, 2)
         optimizer = SGD(model.parameters(), lr=0.01)
@@ -235,8 +241,8 @@ class TestTrainingLoopComponents:
 
         losses = []
         for _ in range(10):
-            x = Tensor(np.random.randn(8, 4).astype(np.float32))
-            y = Tensor(np.random.randint(0, 2, size=8))
+            x = Tensor(rng.standard_normal((8, 4)).astype(np.float32))
+            y = Tensor(rng.integers(0, 2, size=8))
 
             optimizer.zero_grad()
             output = model(x)
@@ -247,7 +253,7 @@ class TestTrainingLoopComponents:
             losses.append(loss.item())
 
         # Just verify no crashes and losses are finite
-        assert all(np.isfinite(l) for l in losses)
+        assert all(np.isfinite(loss_val) for loss_val in losses)
 
 
 class TestGradientAccumulation:
@@ -255,10 +261,11 @@ class TestGradientAccumulation:
 
     def test_gradients_accumulate(self):
         """Test that gradients accumulate without zero_grad."""
-        np.random.seed(42)
+        rng = np.random.default_rng(42)
+        microtorch.manual_seed(42)  # For weight initialization
 
         model = Linear(4, 2)
-        x = Tensor(np.random.randn(3, 4).astype(np.float32), requires_grad=True)
+        x = Tensor(rng.standard_normal((3, 4)).astype(np.float32), requires_grad=True)
 
         # First forward-backward
         out1 = F.sum(model(x))
@@ -279,11 +286,12 @@ class TestGradientAccumulation:
 
     def test_zero_grad_resets(self):
         """Test that zero_grad resets gradients."""
-        np.random.seed(42)
+        rng = np.random.default_rng(42)
+        microtorch.manual_seed(42)  # For weight initialization
 
         model = Linear(4, 2)
         optimizer = SGD(model.parameters(), lr=0.01)
-        x = Tensor(np.random.randn(3, 4).astype(np.float32))
+        x = Tensor(rng.standard_normal((3, 4)).astype(np.float32))
 
         # First forward-backward
         out1 = F.sum(model(x))
@@ -320,7 +328,7 @@ class TestDataLoaderIntegration:
         dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
 
         all_batches = []
-        for epoch in range(3):
+        for _ in range(3):
             epoch_batches = []
             for batch_x, batch_y in dataloader:
                 epoch_batches.append((batch_x.numpy(), batch_y.numpy()))
@@ -344,15 +352,15 @@ class TestDataLoaderIntegration:
 
         class SimpleDataset(Dataset[tuple[Tensor, Tensor]]):
             def __init__(self, size: int = 100):
-                np.random.seed(42)
-                self.X = np.random.randn(size, 4).astype(np.float32)
-                self.y = (self.X.sum(axis=1) > 0).astype(np.int64)
+                rng = np.random.default_rng(42)
+                self.data = rng.standard_normal((size, 4)).astype(np.float32)
+                self.labels = (self.data.sum(axis=1) > 0).astype(np.int64)
 
             def __getitem__(self, index: int) -> tuple[Tensor, Tensor]:
-                return Tensor(self.X[index]), Tensor(np.array([self.y[index]]))
+                return Tensor(self.data[index]), Tensor(np.array([self.labels[index]]))
 
             def __len__(self) -> int:
-                return len(self.X)
+                return len(self.data)
 
         dataset = SimpleDataset(100)
         dataloader = DataLoader(dataset, batch_size=10, shuffle=True)
@@ -362,7 +370,7 @@ class TestDataLoaderIntegration:
         optimizer = SGD(model.parameters(), lr=0.1)
 
         # Train for a few epochs
-        for epoch in range(5):
+        for _ in range(5):
             for batch_x, batch_y in dataloader:
                 optimizer.zero_grad()
                 output = model(batch_x)

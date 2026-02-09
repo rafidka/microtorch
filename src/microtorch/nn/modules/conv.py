@@ -2,6 +2,7 @@ from typing import override
 
 import numpy as np
 
+import microtorch
 from microtorch.nn.modules.module import Module
 from microtorch.nn.modules.parameter import Parameter
 from microtorch.tensor import Tensor, functional as F
@@ -18,7 +19,7 @@ class Conv2d(Module[Tensor]):
         bias: bool = True,
     ) -> None:
         super().__init__()
-        rng = np.random.default_rng()
+        rng = microtorch.get_rng()
         # Kaiming/He initialization for ReLU networks
         fan_in = in_channels * kernel_size * kernel_size
         std = np.sqrt(2.0 / fan_in)

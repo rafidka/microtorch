@@ -6,6 +6,9 @@ from microtorch.tensor import Tensor, functional as F
 
 # pyright: reportPrivateUsage=false
 
+# Module-level RNG for reproducible tests
+_rng = np.random.default_rng(42)
+
 
 def test_linear_initialization():
     linear = Linear(3, 2)
@@ -52,7 +55,7 @@ def test_linear_gradient():
 def test_linear_batch_input():
     batch_size = 32
     linear = Linear(10, 5)
-    x = Tensor(np.random.randn(batch_size, 10))
+    x = Tensor(_rng.standard_normal((batch_size, 10)))
     output = linear(x)
     assert output.shape == (batch_size, 5)
 
@@ -60,4 +63,4 @@ def test_linear_batch_input():
 def test_linear_invalid_input():
     linear = Linear(3, 2)
     with pytest.raises(ValueError):
-        linear(Tensor(np.random.randn(4)))  # Wrong dimensions
+        linear(Tensor(_rng.standard_normal((4,))))  # Wrong dimensions

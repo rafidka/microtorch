@@ -5,6 +5,9 @@ from microtorch.tensor import Tensor, functional as F
 
 # pyright: reportPrivateUsage=false
 
+# Module-level RNG for reproducible tests
+_rng = np.random.default_rng(42)
+
 
 def test_conv2d_initialization():
     conv = Conv2d(in_channels=3, out_channels=16, kernel_size=3, stride=1, padding=1)
@@ -35,28 +38,28 @@ def test_conv2d_initialization_kaiming():
 
 def test_conv2d_forward():
     conv = Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1, padding=1)
-    x = Tensor(np.random.randn(2, 1, 28, 28))
+    x = Tensor(_rng.standard_normal((2, 1, 28, 28)))
     output = conv(x)
     assert output.shape == (2, 8, 28, 28)
 
 
 def test_conv2d_forward_stride():
     conv = Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=2, padding=1)
-    x = Tensor(np.random.randn(2, 1, 28, 28))
+    x = Tensor(_rng.standard_normal((2, 1, 28, 28)))
     output = conv(x)
     assert output.shape == (2, 8, 14, 14)
 
 
 def test_conv2d_forward_no_padding():
     conv = Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1, padding=0)
-    x = Tensor(np.random.randn(2, 1, 28, 28))
+    x = Tensor(_rng.standard_normal((2, 1, 28, 28)))
     output = conv(x)
     assert output.shape == (2, 8, 26, 26)
 
 
 def test_conv2d_gradient():
     conv = Conv2d(in_channels=1, out_channels=8, kernel_size=3, stride=1, padding=1)
-    x = Tensor(np.random.randn(2, 1, 28, 28), requires_grad=True)
+    x = Tensor(_rng.standard_normal((2, 1, 28, 28)), requires_grad=True)
     output = conv(x)
     loss = F.sum(output)
     loss.backward()
@@ -75,7 +78,7 @@ def test_conv2d_gradient_no_bias():
     conv = Conv2d(
         in_channels=1, out_channels=8, kernel_size=3, stride=1, padding=1, bias=False
     )
-    x = Tensor(np.random.randn(2, 1, 28, 28), requires_grad=True)
+    x = Tensor(_rng.standard_normal((2, 1, 28, 28)), requires_grad=True)
     output = conv(x)
     loss = F.sum(output)
     loss.backward()
@@ -88,7 +91,7 @@ def test_conv2d_gradient_no_bias():
 def test_conv2d_batch_input():
     batch_size = 32
     conv = Conv2d(in_channels=3, out_channels=16, kernel_size=3, stride=1, padding=1)
-    x = Tensor(np.random.randn(batch_size, 3, 32, 32))
+    x = Tensor(_rng.standard_normal((batch_size, 3, 32, 32)))
     output = conv(x)
     assert output.shape == (batch_size, 16, 32, 32)
 

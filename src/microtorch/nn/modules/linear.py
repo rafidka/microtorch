@@ -2,6 +2,7 @@ from typing import override
 
 import numpy as np
 
+import microtorch
 from microtorch.nn.modules.parameter import Parameter
 from microtorch.tensor import Tensor
 
@@ -19,7 +20,7 @@ class Linear(Module[Tensor]):
 
     def __init__(self, in_features: int, out_features: int) -> None:
         super().__init__()
-        rng = np.random.default_rng()
+        rng = microtorch.get_rng()
         # Kaiming/He initialization for ReLU networks
         std = np.sqrt(2.0 / in_features)
         self.weight = Parameter(
